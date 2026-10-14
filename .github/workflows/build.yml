@@ -1,0 +1,32 @@
+name: Build IGDownloader.dylib
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dylib (arm64, iOS 14+)
+        run: |
+          mkdir -p build
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          xcrun --sdk iphoneos clang \
+            -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" \
+            -fobjc-arc -dynamiclib -Os -Wall -Wno-deprecated-declarations \
+            -framework UIKit -framework Foundation -framework AVFoundation \
+            -framework Photos -framework CoreGraphics \
+            -install_name @rpath/IGDownloader.dylib \
+            -o build/IGDownloader.dylib src/IGDownloader.m
+          codesign -f -s - build/IGDownloader.dylib
+          file build/IGDownloader.dylib
+          ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IGDownloader-dylib
+          path: build/IGDownloader.dylib
