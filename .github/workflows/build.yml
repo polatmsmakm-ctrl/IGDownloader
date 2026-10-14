@@ -24,7 +24,7 @@ jobs:
             -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" \
             -fobjc-arc -dynamiclib -Os -Wall -Wno-deprecated-declarations \
             -framework UIKit -framework Foundation -framework AVFoundation \
-            -framework Photos -framework CoreGraphics \
+            -framework Photos -framework CoreGraphics -framework QuartzCore \
             -install_name @rpath/IGDownloader.dylib \
             -o build/IGDownloader.dylib src/IGDownloader.m
           codesign -f -s - build/IGDownloader.dylib
