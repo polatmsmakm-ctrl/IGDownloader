@@ -14,7 +14,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r9-icon"
+#define IGD_BUILD @"r10-videoonly"
 
 #pragma mark - Runtime helpers
 
@@ -267,10 +267,10 @@ static id IGDMediaFromRegistry(NSMutableString *rep) {
     return media;
 }
 
-static id IGDFindCurrentMedia(NSMutableString *rep) {
+static id IGDFindCurrentMediaB(NSMutableString *rep, int budget) {
     NSMutableArray *cands = [NSMutableArray new];
     int count = 0;
-    gBudget = 400000;
+    gBudget = budget;
     gHolderAreas = [NSMutableDictionary new];
     id fromUFI = IGDMediaFromRegistry(rep);
     if (fromUFI) return fromUFI;
@@ -285,8 +285,29 @@ static id IGDFindCurrentMedia(NSMutableString *rep) {
         [rep appendFormat:@"best holder: %@ (visible area %.0f)\nmedia class: %@\n",
          best[@"holder"], [best[@"area"] doubleValue], NSStringFromClass(object_getClass(best[@"media"]))];
     }
-    if (!best) IGDDumpNoMedia(rep);
+    if (!best && budget >= 400000) IGDDumpNoMedia(rep);
     return best[@"media"];
+}
+static id IGDFindCurrentMedia(NSMutableString *rep) { return IGDFindCurrentMediaB(rep, 400000); }
+
+// Cheap check run once a second: is a *video* currently on screen (reel, explore, story, shared video in a chat)?
+static BOOL IGDVideoVisible(void) {
+    static CFAbsoluteTime lastWalk; static BOOL cached;
+    NSMutableString *rep = [NSMutableString new];
+    id m = nil;
+    NSMutableArray *dummy = nil; (void)dummy;
+    // 1) reels / explore reels: the registered, on-screen UFI (fast)
+    gBudget = 20000;
+    m = IGDMediaFromRegistry(rep);
+    if (!m) {
+        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        if (now - lastWalk < 1.4) return cached;      // throttle the heavier view walk
+        lastWalk = now;
+        m = IGDFindCurrentMediaB(rep, 120000);
+    }
+    BOOL v = m && (IGDSend(m, "video") != nil || IGDSend(m, "rawVideo") != nil);
+    cached = v;
+    return v;
 }
 
 #pragma mark - Extracting URLs
@@ -563,10 +584,9 @@ static CGPoint IGDButtonSpot(UIWindow *w) {
 
 static void IGDEnsureButton(void) {
     IGDInstallHooks();
-    if (!raOn(@"dl")) { gButton.hidden = YES; return; }
-    gButton.hidden = NO;
     UIWindow *w = IGDKeyWindow();
-    if (!w) return;
+    if (!w || !raOn(@"dl") || !IGDVideoVisible()) { gButton.hidden = YES; return; }
+    gButton.hidden = NO;
     if (!gButton) {
         gButton = [UIButton buttonWithType:UIButtonTypeCustom];
         gButton.bounds = CGRectMake(0, 0, 44, 44);
