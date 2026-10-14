@@ -20,7 +20,7 @@ jobs:
           mkdir -p build
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
           : > build/build.log
-          for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock; do
+          for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen; do
             echo "== $n ==" | tee -a build/build.log
             (xcrun --sdk iphoneos clang \
               -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" \

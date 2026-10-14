@@ -1,6 +1,6 @@
-// IGGhost: stop broadcasting your activity — typing indicator, DM "seen", story "seen".
+// IGGhost: stop broadcasting your activity — typing indicator and story "seen".
 #import "igd_common.h"
-#define BUILD @"g1"
+#define BUILD @"g2"
 
 // Make a method do nothing (void) or return NO (BOOL).
 static void silence(const char *cls, const char *sel) {
@@ -31,9 +31,7 @@ __attribute__((constructor)) static void init(void) {
                 ((void (*)(id, SEL, BOOL, id, id, long))orig)(self, s, active, key, meta, type);
             };
         });
-        // DM seen receipts
-        silence("IGDirectThreadViewListAdapterDataSource", "shouldUpdateLastSeenMessage");
-        silence("IGDirectMessageListViewController", "messageListDataSourceShouldUpdateSeenState:");
+        // (DM "seen" is handled by IGSeen, which adds a manual eye button)
         // story seen
         silence("IGStoryViewerViewController", "fullscreenSectionController:didMarkItemAsSeen:");
     });
