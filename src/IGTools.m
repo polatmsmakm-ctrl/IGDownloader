@@ -8,7 +8,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <PhotosUI/PhotosUI.h>
-#define BUILD @"t5"
+#define BUILD @"t6"
 
 static BOOL gRunning, gStop;
 
@@ -100,7 +100,8 @@ static void runRepeat(__weak UIViewController *thread, NSString *text, NSInteger
 // =============================== video -> voice message ===============================
 // 1) pick a video, 2) extract its audio and encode Ogg Opus (the format Instagram voice messages use),
 // 3) the next voice message you record is swapped for that file the moment the recording stops.
-static NSString *gPendingOgg;
+static NSString *gPendingOgg, *gPendingM4A;
+static NSData *gReplOgg, *gReplM4A;   // pre-loaded replacement contents
 static NSDate *gPendingAt;
 static NSMutableString *gVoiceLog;
 static void vlog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1, 2);
@@ -247,7 +248,21 @@ static void convertVideoToOgg(NSURL *video, void (^done)(NSString *err)) {
         NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-voice-%u.ogg", arc4random()]];
         [ogg writeToFile:path atomically:YES];
         vlog(@"ogg ready: %lu bytes, %.1f sec", (unsigned long)ogg.length, (double)frames / 48000.0);
-        dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
+        // also an AAC .m4a: this Instagram build records voice notes as AAC in an .mp4
+        AVAssetExportSession *ex = [[AVAssetExportSession alloc] initWithAsset:as presetName:AVAssetExportPresetAppleM4A];
+        NSString *m4a = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-voice-%u.m4a", arc4random()]];
+        ex.outputURL = [NSURL fileURLWithPath:m4a];
+        ex.outputFileType = AVFileTypeAppleM4A;
+        ex.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(180, 600));
+        [ex exportAsynchronouslyWithCompletionHandler:^{
+            BOOL okM = ex.status == AVAssetExportSessionStatusCompleted;
+            vlog(@"m4a export: %@ %@", okM ? @"ok" : @"FAILED", okM ? @"" : ex.error.localizedDescription ?: @"");
+            dispatch_async(dispatch_get_main_queue(), ^{
+                gPendingOgg = path; gPendingM4A = okM ? m4a : nil; gPendingAt = [NSDate date];
+                startPolling();
+                done(nil);
+            });
+        }];
     });
 }
 
@@ -261,7 +276,7 @@ static BOOL looksOgg(NSString *path) {
 // ---- see which files Instagram's recorder really writes (dyld interposing of open/fopen) -----------
 static NSMutableArray<NSString *> *gHits;     // paths opened for writing while a voice is pending
 static NSObject *gHitLock;
-__attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; }
+__attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; gFdLock = [NSObject new]; }
 static int gHitLogBudget = 40;
 
 static void noteWrite(const char *path) {
@@ -277,11 +292,47 @@ static void noteWrite(const char *path) {
         if (gHitLogBudget-- > 0) vlog(@"write-open: %@", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"]);
     }
 }
+// Voice notes in this Instagram build are recorded as AAC in an .mp4 under Library/Caches/Temporary/Audio/.
+static NSData *replacementFor(const char *path) {
+    if (!path) return nil;
+    const char *dot = strrchr(path, '.');
+    if (!dot) return nil;
+    if (!strcasecmp(dot, ".ogg") || !strcasecmp(dot, ".opus") || !strcasecmp(dot, ".oga")) return gReplOgg;
+    if ((!strcasecmp(dot, ".mp4") || !strcasecmp(dot, ".m4a")) && strstr(path, "/Audio/")) return gReplM4A;
+    return nil;
+}
+static struct { int fd; char path[512]; } gFds[16];
+static NSObject *gFdLock;
+static void fdRemember(int fd, const char *path) {
+    @synchronized (gFdLock) {
+        for (int i = 0; i < 16; i++) if (gFds[i].fd <= 0) { gFds[i].fd = fd; strlcpy(gFds[i].path, path, sizeof gFds[i].path); return; }
+    }
+}
+static int ra_close(int fd) {
+    char path[512] = {0};
+    if (gPendingOgg && fd > 2) {
+        @synchronized (gFdLock) {
+            for (int i = 0; i < 16; i++) if (gFds[i].fd == fd) { strlcpy(path, gFds[i].path, sizeof path); gFds[i].fd = 0; break; }
+        }
+    }
+    int r = close(fd);
+    if (path[0]) {
+        NSData *repl = replacementFor(path);
+        if (repl.length) {
+            BOOL ok = [repl writeToFile:[NSString stringWithUTF8String:path] atomically:NO];   // recorder just finished writing: replace now
+            vlog(@"close-swap: %@ (%lu bytes) ok=%d", [[NSString stringWithUTF8String:path] lastPathComponent], (unsigned long)repl.length, ok);
+        }
+    }
+    return r;
+}
 static int ra_open(const char *path, int oflag, ...) {
     mode_t mode = 0;
     if (oflag & O_CREAT) { va_list ap; va_start(ap, oflag); mode = (mode_t)va_arg(ap, int); va_end(ap); }
     int fd = open(path, oflag, mode);
-    if (fd >= 0 && (oflag & (O_WRONLY | O_RDWR)) && (oflag & (O_CREAT | O_TRUNC))) noteWrite(path);
+    if (fd >= 0 && (oflag & (O_WRONLY | O_RDWR)) && (oflag & (O_CREAT | O_TRUNC))) {
+        noteWrite(path);
+        if (gPendingOgg && replacementFor(path)) fdRemember(fd, path);
+    }
     return fd;
 }
 static FILE *ra_fopen(const char *path, const char *mode) {
@@ -292,6 +343,7 @@ static FILE *ra_fopen(const char *path, const char *mode) {
 #define RA_INTERPOSE(_r, _o) __attribute__((used)) static struct { const void *r; const void *o; } _ra_i_##_o __attribute__((section("__DATA,__interpose"))) = { (const void *)(unsigned long)&_r, (const void *)(unsigned long)&_o }
 RA_INTERPOSE(ra_open, open);
 RA_INTERPOSE(ra_fopen, fopen);
+RA_INTERPOSE(ra_close, close);
 
 static int swapInDir(NSString *dir, NSData *repl, int depth) {
     int n = 0;
@@ -332,7 +384,9 @@ static NSMutableDictionary<NSString *, NSDate *> *gTracked;   // ogg-looking fil
 static NSMutableSet<NSString *> *gLogged, *gDone;
 static int gLogBudget;
 
-static void pollTrySwap(NSString *p, NSData *repl) {
+static void pollTrySwap(NSString *p) {
+    NSData *repl = replacementFor(p.UTF8String);
+    if (!repl.length) return;
     NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
     NSDate *mt = at.fileModificationDate;
     if (!mt || at.fileSize == 0) return;
@@ -371,7 +425,9 @@ static void startPolling(void) {
     if (gPoll) dispatch_source_cancel(gPoll);
     gTracked = [NSMutableDictionary new]; gLogged = [NSMutableSet new]; gDone = [NSMutableSet new]; gLogBudget = 12;
     @synchronized (gHitLock) { [gHits removeAllObjects]; gHitLogBudget = 40; }
-    NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
+    gReplOgg = [NSData dataWithContentsOfFile:gPendingOgg];
+    gReplM4A = gPendingM4A ? [NSData dataWithContentsOfFile:gPendingM4A] : nil;
+    NSData *repl = gReplOgg;
     NSString *home = NSHomeDirectory();
     NSArray *roots = @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"],
                        [home stringByAppendingPathComponent:@"Documents"], [home stringByAppendingPathComponent:@"Library/Application Support"]];
@@ -383,12 +439,12 @@ static void startPolling(void) {
         @autoreleasepool {
             NSArray *hits; @synchronized (gHitLock) { hits = [gHits copy]; }
             for (NSString *h in hits) {                                           // files Instagram opened for writing
-                if (!gTracked[h] && ([@[@"ogg", @"opus", @"oga"] containsObject:h.pathExtension.lowercaseString] || looksOgg(h))) {
+                if (!gTracked[h] && (replacementFor(h.UTF8String) || looksOgg(h))) {
                     gTracked[h] = [NSDate dateWithTimeIntervalSince1970:0];
                     vlog(@"tracking recorder file: %@", [h stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"]);
                 }
             }
-            for (NSString *p in [gTracked.allKeys copy]) pollTrySwap(p, repl);   // watch the files we already know about
+            for (NSString *p in [gTracked.allKeys copy]) pollTrySwap(p);   // watch the files we already know about
             for (NSString *r in roots) pollScan(r, 0, repl);                      // and look for new ones
         }
     });
@@ -432,11 +488,12 @@ static void hookRecorder(void) {
             [[NSFileManager defaultManager] removeItemAtURL:copy error:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (e) { igdToast([NSString stringWithFormat:@"فشل: %@", e]); return; }
+                igdToast(@"الصوت جاهز ✓ سجّل فويس الحين");
                 UIAlertController *a = [UIAlertController alertControllerWithTitle:@"الصوت جاهز ✓"
                     message:@"الحين سجّل فويس عادي في المحادثة: اضغط مطوّلاً على المايك وأرسل (يفضّل تثبّت التسجيل لين تقارب مدة الصوت). أول فويس ترسله يتبدّل بصوت الفيديو."
                     preferredStyle:UIAlertControllerStyleAlert];
                 [a addAction:[UIAlertAction actionWithTitle:@"تمام" style:UIAlertActionStyleDefault handler:nil]];
-                [igdTopVC() presentViewController:a animated:YES completion:nil];
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [igdTopVC() presentViewController:a animated:YES completion:nil]; });
             });
         });
     }];
