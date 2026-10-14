@@ -13,7 +13,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r6-model"
+#define IGD_BUILD @"r7-ufi"
 
 #pragma mark - Runtime helpers
 
@@ -83,6 +83,16 @@ static id IGDAnyObjIvar(id o, Ivar iv) {
             if (!strcmp(nm, ok[i])) return IGDRawObjIvar(o, iv);
     }
     return nil;
+}
+
+// Read an object ivar by NAME (like MSHookIvar): works even when the ivar has no type encoding.
+static id IGDIvarByName(id o, const char *name) {
+    if (!o) return nil;
+    Ivar iv = class_getInstanceVariable(object_getClass(o), name);
+    if (!iv) return nil;
+    const char *t = ivar_getTypeEncoding(iv);
+    if (t && t[0] == '@') return object_getIvar(o, iv);
+    return IGDRawObjIvar(o, iv);
 }
 
 #pragma mark - Finding the IGMedia on screen
@@ -196,11 +206,74 @@ static void IGDDumpNoMedia(NSMutableString *rep) {
     }
 }
 
+#pragma mark - Reels UFI registry (the proven path: UFI._viewModel._media)
+
+static NSHashTable *gUFIs;
+static IMP gOrigLayout, gOrigMove;
+static NSString *gSwizzleStatus = @"not installed yet";
+
+static void IGDRegister(id v) {
+    if (!gUFIs) gUFIs = [NSHashTable weakObjectsHashTable];
+    [gUFIs addObject:v];
+}
+static void igd_layout(id self, SEL _cmd) {
+    if (gOrigLayout) ((void (*)(id, SEL))gOrigLayout)(self, _cmd);
+    IGDRegister(self);
+}
+static void igd_move(id self, SEL _cmd) {
+    if (gOrigMove) ((void (*)(id, SEL))gOrigMove)(self, _cmd);
+    IGDRegister(self);
+}
+
+static BOOL IGDSwizzle(Class c, SEL sel, IMP imp, IMP *orig) {
+    Method m = class_getInstanceMethod(c, sel);
+    if (!m) return NO;
+    IMP cur = method_getImplementation(m);
+    if (class_addMethod(c, sel, imp, method_getTypeEncoding(m))) *orig = cur;
+    else *orig = method_setImplementation(m, imp);
+    return YES;
+}
+
+static void IGDInstallHooks(void) {
+    static BOOL done;
+    if (done) return;
+    Class c = NSClassFromString(@"IGSundialViewerVerticalUFI");
+    if (!c) c = NSClassFromString(@"_TtC26IGSundialViewerVerticalUFI26IGSundialViewerVerticalUFI");
+    if (!c) { gSwizzleStatus = @"UFI class NOT found"; return; }
+    BOOL a = IGDSwizzle(c, @selector(layoutSubviews), (IMP)igd_layout, &gOrigLayout);
+    BOOL b = IGDSwizzle(c, @selector(didMoveToWindow), (IMP)igd_move, &gOrigMove);
+    done = YES;
+    gSwizzleStatus = [NSString stringWithFormat:@"hooked %@ layout=%d move=%d", NSStringFromClass(c), a, b];
+}
+
+static id IGDMediaFromRegistry(NSMutableString *rep) {
+    NSArray *all = gUFIs.allObjects;
+    [rep appendFormat:@"hook: %@ | registered UFI views: %lu\n", gSwizzleStatus, (unsigned long)all.count];
+    UIView *best = nil;
+    double bestA = 0;
+    for (UIView *v in all) {
+        if (![v isKindOfClass:[UIView class]] || !v.window || v.hidden) continue;
+        CGRect r = CGRectIntersection([v convertRect:v.bounds toView:nil], v.window.bounds);
+        if (CGRectIsNull(r)) continue;
+        double a = r.size.width * r.size.height;
+        if (a > bestA) { bestA = a; best = v; }
+    }
+    if (!best) { [rep appendString:@"no visible UFI view\n"]; return nil; }
+    id vm = IGDIvarByName(best, "_viewModel");
+    id media = IGDIvarByName(vm, "_media");
+    [rep appendFormat:@"UFI visible area %.0f | _viewModel: %@ | _media: %@\n", bestA,
+     vm ? NSStringFromClass(object_getClass(vm)) : @"nil", media ? NSStringFromClass(object_getClass(media)) : @"nil"];
+    return media;
+}
+
 static id IGDFindCurrentMedia(NSMutableString *rep) {
     NSMutableArray *cands = [NSMutableArray new];
     int count = 0;
     gBudget = 400000;
     gHolderAreas = [NSMutableDictionary new];
+    id fromUFI = IGDMediaFromRegistry(rep);
+    if (fromUFI) return fromUFI;
+    [rep appendString:@"-- UFI path failed, trying view walk --\n"];
     for (UIWindow *w in IGDWindows()) IGDWalk(w, cands, &count);
     [rep appendFormat:@"views scanned: %d | media candidates: %lu\n", count, (unsigned long)cands.count];
     NSDictionary *best = nil;
@@ -281,6 +354,7 @@ static NSArray<NSURL *> *IGDURLsForMedia(id media, NSMutableString *rep) {
         if (!video) continue;
         sawVideo = YES;
         [rep appendFormat:@"[%@] -> %@\n", sn, NSStringFromClass(object_getClass(video))];
+        IGDCollect(IGDIvarByName(video, "_allVideoURLs"), all, 2);
         IGDCollect(IGDSend(video, "allVideoURLs"), all, 2);
         IGDCollect(IGDSend(video, "url"), all, 1);
         NSMutableArray *names = [NSMutableArray new];
@@ -384,8 +458,14 @@ static void IGDSaveToPhotos(NSURL *file) {
     }];
 }
 
+static NSString *gLastFail;
+
 static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
-    if (idx >= urls.count) { IGDToast(@"All download links failed"); return; }
+    if (idx >= urls.count) {
+        gLastReport = [NSString stringWithFormat:@"%@\nDOWNLOAD FAILED: %@\n", gLastReport ?: @"", gLastFail ?: @"?"];
+        IGDToast([NSString stringWithFormat:@"All links failed (%@)", gLastFail ?: @"?"]);
+        return;
+    }
     IGDToast(urls.count > 1 ? [NSString stringWithFormat:@"Downloading… (%lu/%lu)", (unsigned long)idx + 1, (unsigned long)urls.count] : @"Downloading…");
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:urls[idx]];
     [req setValue:@"video/*,*/*;q=0.8" forHTTPHeaderField:@"Accept"];
@@ -394,6 +474,7 @@ static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
         NSInteger code = [resp isKindOfClass:[NSHTTPURLResponse class]] ? ((NSHTTPURLResponse *)resp).statusCode : 0;
         NSString *mime = resp.MIMEType.lowercaseString ?: @"";
         if (err || !loc || code >= 400 || [mime containsString:@"mpegurl"] || [mime containsString:@"dash"]) {
+            gLastFail = err ? err.localizedDescription : [NSString stringWithFormat:@"HTTP %ld %@", (long)code, mime];
             IGDDownloadFrom(urls, idx + 1);
             return;
         }
@@ -402,8 +483,10 @@ static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
         [[NSFileManager defaultManager] removeItemAtURL:dst error:nil];
         if (![[NSFileManager defaultManager] moveItemAtURL:loc toURL:dst error:nil]) { IGDDownloadFrom(urls, idx + 1); return; }
         unsigned long long size = [[[NSFileManager defaultManager] attributesOfItemAtPath:dst.path error:nil] fileSize];
-        AVURLAsset *asset = [AVURLAsset URLAssetWithURL:dst options:nil];
-        if (size < 10000 || [asset tracksWithMediaType:AVMediaTypeVideo].count == 0) {
+        NSData *head = [NSData dataWithContentsOfURL:dst options:NSDataReadingMappedIfSafe error:nil];
+        BOOL isMP4 = head.length > 12 && memcmp((const char *)head.bytes + 4, "ftyp", 4) == 0;
+        if (size < 20000 || !isMP4) {
+            gLastFail = [NSString stringWithFormat:@"bad file (%llu bytes, mp4=%d, mime %@)", size, isMP4, mime];
             [[NSFileManager defaultManager] removeItemAtURL:dst error:nil];
             IGDDownloadFrom(urls, idx + 1);
             return;
@@ -455,6 +538,7 @@ static void IGDTap(void) {
 @end
 
 static void IGDEnsureButton(void) {
+    IGDInstallHooks();
     UIWindow *w = IGDKeyWindow();
     if (!w) return;
     if (!gButton) {
