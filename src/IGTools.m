@@ -275,7 +275,7 @@ static BOOL looksOgg(NSString *path) {
 
 // ---- see which files Instagram's recorder really writes (dyld interposing of open/fopen) -----------
 static NSMutableArray<NSString *> *gHits;     // paths opened for writing while a voice is pending
-static NSObject *gHitLock;
+static NSObject *gHitLock, *gFdLock;
 __attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; gFdLock = [NSObject new]; }
 static int gHitLogBudget = 40;
 
@@ -302,7 +302,6 @@ static NSData *replacementFor(const char *path) {
     return nil;
 }
 static struct { int fd; char path[512]; } gFds[16];
-static NSObject *gFdLock;
 static void fdRemember(int fd, const char *path) {
     @synchronized (gFdLock) {
         for (int i = 0; i < 16; i++) if (gFds[i].fd <= 0) { gFds[i].fd = fd; strlcpy(gFds[i].path, path, sizeof gFds[i].path); return; }
