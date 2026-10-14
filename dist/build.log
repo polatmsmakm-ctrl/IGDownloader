@@ -1,6 +1,19 @@
-build/IGDownloader.dylib: Mach-O 64-bit dynamically linked shared library arm64
-total 248
-drwxr-xr-x  4 runner  staff     128 Oct 14 17:58 .
-drwxr-xr-x  9 runner  staff     288 Oct 14 17:58 ..
--rw-r--r--  1 runner  staff      80 Oct 14 17:58 build.log
--rwxr-xr-x  1 runner  staff  118928 Oct 14 17:58 IGDownloader.dylib
+== IGDownloader ==
+OK IGDownloader
+== IGConfirm ==
+OK IGConfirm
+== IGGhost ==
+OK IGGhost
+== IGNoAds ==
+OK IGNoAds
+== IGLock ==
+OK IGLock
+total 984
+drwxr-xr-x  8 runner  staff     256 Oct 14 18:09 .
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:09 ..
+-rw-r--r--  1 runner  staff     137 Oct 14 18:09 build.log
+-rwxr-xr-x  1 runner  staff   91536 Oct 14 18:09 IGConfirm.dylib
+-rwxr-xr-x  1 runner  staff  118928 Oct 14 18:09 IGDownloader.dylib
+-rwxr-xr-x  1 runner  staff   91120 Oct 14 18:09 IGGhost.dylib
+-rwxr-xr-x  1 runner  staff   90832 Oct 14 18:09 IGLock.dylib
+-rwxr-xr-x  1 runner  staff   90528 Oct 14 18:09 IGNoAds.dylib
