@@ -202,6 +202,12 @@ static NSString *raIcon(NSString *k) {
     return c;
 }
 @end
+#import "ra_logo.h"
+UIImage *raLogoImage(void) {
+    static UIImage *img; static dispatch_once_t o;
+    dispatch_once(&o, ^{ NSData *d = [[NSData alloc] initWithBase64EncodedString:kRaLogoB64 options:0]; img = [UIImage imageWithData:d scale:3]; });
+    return img;
+}
 #endif
 
 static void raOpenMenu(void) RA_UNUSED;
@@ -216,18 +222,73 @@ static void raOpenMenu(void) {
 
 @interface RaOpener : NSObject
 + (void)open:(id)sender;
++ (void)pan:(UIPanGestureRecognizer *)g;
 @end
+extern UIImage *raLogoImage(void);
 #ifndef RA_NO_IMPL
 @implementation RaOpener
 + (void)open:(id)sender { raOpenMenu(); }
++ (void)pan:(UIPanGestureRecognizer *)g {
+    UIView *v = g.view, *sup = v.superview;
+    if (!sup) return;
+    CGPoint t = [g translationInView:sup];
+    v.center = CGPointMake(v.center.x + t.x, v.center.y + t.y);
+    [g setTranslation:CGPointZero inView:sup];
+    if (g.state == UIGestureRecognizerStateEnded || g.state == UIGestureRecognizerStateCancelled) {
+        CGFloat W = sup.bounds.size.width, H = sup.bounds.size.height;
+        CGFloat x = v.center.x < W / 2 ? 34 : W - 34;                       // snap to the nearest side
+        CGFloat y = MIN(MAX(v.center.y, sup.safeAreaInsets.top + 40), H - sup.safeAreaInsets.bottom - 70);
+        [UIView animateWithDuration:0.22 animations:^{ v.center = CGPointMake(x, y); }];
+        [NSUserDefaults.standardUserDefaults setObject:@[@(x / W), @(y / H)] forKey:@"ra.logo.pos"];
+    }
+}
 @end
 #endif
+
+static void raInstallLogo(void) {
+    NSMutableArray *reg = raRegistry();
+    BOOL have = NO;
+    for (NSDictionary *d in reg) if ([d[@"key"] isEqual:@"logo"]) have = YES;
+    if (!have) [reg addObject:@{@"group": @"الواجهة", @"key": @"logo", @"title": @"الشعار العائم", @"sub": @"زر Ra المتحرك اللي يفتح المنيو. تقدر تسحبه لأي مكان"}];
+    __block UIButton *btn = nil;
+    [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer *t) {
+        UIWindow *w = nil;
+        for (UIScene *sc in UIApplication.sharedApplication.connectedScenes) {
+            if (![sc isKindOfClass:[UIWindowScene class]]) continue;
+            for (UIWindow *x in ((UIWindowScene *)sc).windows) { if (x.isKeyWindow) { w = x; break; } if (!w) w = x; }
+        }
+        if (!w) return;
+        BOOL show = raOn(@"logo") && ![raTop() isKindOfClass:[RaMenuVC class]];
+        if (!btn) {
+            btn = [UIButton buttonWithType:UIButtonTypeCustom];
+            btn.bounds = CGRectMake(0, 0, 56, 56);
+            btn.layer.cornerRadius = 28;
+            btn.clipsToBounds = YES;
+            btn.backgroundColor = UIColor.blackColor;
+            UIImage *im = raLogoImage();
+            btn.imageView.contentMode = UIViewContentModeScaleAspectFill;
+            [btn setImage:im forState:UIControlStateNormal];
+            btn.layer.borderWidth = 1.2;
+            btn.layer.borderColor = [UIColor colorWithRed:1 green:0.55 blue:0.8 alpha:0.9].CGColor;
+            btn.accessibilityIdentifier = @"ra.logo";
+            [btn addTarget:[RaOpener class] action:@selector(open:) forControlEvents:UIControlEventTouchUpInside];
+            [btn addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:[RaOpener class] action:@selector(pan:)]];
+            NSArray *pos = [NSUserDefaults.standardUserDefaults arrayForKey:@"ra.logo.pos"];
+            CGSize S = w.bounds.size;
+            btn.center = pos.count == 2 ? CGPointMake([pos[0] doubleValue] * S.width, [pos[1] doubleValue] * S.height) : CGPointMake(34, S.height * 0.28);
+        }
+        btn.hidden = !show;
+        if (btn.superview != w) [w addSubview:btn];
+        else if (w.subviews.lastObject != btn) [w bringSubviewToFront:btn];
+    }];
+}
 
 static void raInstallEntryPoints(void) {
     NSProcessInfo *p = NSProcessInfo.processInfo;
     const void *k = (const void *)sel_registerName("ra.installed");
     if (objc_getAssociatedObject(p, k)) return;
     objc_setAssociatedObject(p, k, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    raInstallLogo();
 
     // 1) a "Ra" button on Instagram's Settings screens
     Method m = class_getInstanceMethod([UIViewController class], @selector(viewDidAppear:));
