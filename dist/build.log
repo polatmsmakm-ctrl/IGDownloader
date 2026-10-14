@@ -1,6 +1,6 @@
 build/IGDownloader.dylib: Mach-O 64-bit dynamically linked shared library arm64
-total 240
-drwxr-xr-x  4 runner  staff     128 Oct 14 05:05 .
-drwxr-xr-x  9 runner  staff     288 Oct 14 05:05 ..
--rw-r--r--  1 runner  staff      80 Oct 14 05:05 build.log
--rwxr-xr-x  1 runner  staff  118176 Oct 14 05:05 IGDownloader.dylib
+total 248
+drwxr-xr-x  4 runner  staff     128 Oct 14 17:58 .
+drwxr-xr-x  9 runner  staff     288 Oct 14 17:58 ..
+-rw-r--r--  1 runner  staff      80 Oct 14 17:58 build.log
+-rwxr-xr-x  1 runner  staff  118928 Oct 14 17:58 IGDownloader.dylib
