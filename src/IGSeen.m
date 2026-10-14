@@ -1,10 +1,21 @@
 // IGSeen: read DMs without sending "seen". An eye button in the chat header sends "seen" manually.
 #import "igd_common.h"
-#define BUILD @"s3"
+#define BUILD @"s4"
+
+@interface IGSeenHold : NSObject
++ (void)hold:(UILongPressGestureRecognizer *)g;
+@end
 
 static BOOL gAllow = NO;                 // YES only while the eye button is sending "seen"
 static __weak UIViewController *gThread; // chat currently on screen
 static UIButton *gEye;
+
+@implementation IGSeenHold
++ (void)hold:(UILongPressGestureRecognizer *)g {
+    if (g.state != UIGestureRecognizerStateBegan || !gThread) return;
+    [NSNotificationCenter.defaultCenter postNotificationName:@"ra.chattools" object:gThread];   // IGTools listens
+}
+@end
 
 // ---- gated hooks -----------------------------------------------------------
 static void gateBool(const char *cls, const char *sel) {
@@ -63,6 +74,7 @@ static void placeEye(void) {
         gEye.accessibilityIdentifier = @"igseen.eye";
         styleEye(NO);
         [gEye addAction:[UIAction actionWithHandler:^(UIAction *a) { sendSeen(); }] forControlEvents:UIControlEventTouchUpInside];
+        [gEye addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:[IGSeenHold class] action:@selector(hold:)]];
     }
     if (gEye.superview != w) [w addSubview:gEye];
     [w bringSubviewToFront:gEye];
