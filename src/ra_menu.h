@@ -36,22 +36,122 @@ static UIViewController *raTop(void) {
     return v;
 }
 
-@interface RaMenuVC : UITableViewController
+@interface RaMenuVC : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
 #ifndef RA_NO_IMPL
-@implementation RaMenuVC
-- (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
+#import "ra_bg.h"
+static UIColor *raAccent(void) { return [UIColor colorWithRed:0.55 green:0.58 blue:1.0 alpha:1]; }
+static NSString *raIcon(NSString *k) {
+    if ([k hasPrefix:@"dl"]) return @"arrow.down.circle.fill";
+    if ([k hasPrefix:@"cf"]) return @"questionmark.circle.fill";
+    if ([k hasPrefix:@"gh"] || [k hasPrefix:@"seen"]) return @"eye.slash.fill";
+    if ([k hasPrefix:@"noads"]) return @"nosign";
+    if ([k hasPrefix:@"lock"]) return @"lock.fill";
+    if ([k hasPrefix:@"x.unmute"]) return @"speaker.wave.2.fill";
+    if ([k hasPrefix:@"x.hide"]) return @"rectangle.bottomthird.inset.filled";
+    return @"sparkles";
+}
+
+@implementation RaMenuVC {
+    UITableView *_table;
+    UIImageView *_bg;
+}
+- (UIStatusBarStyle)preferredStatusBarStyle { return UIStatusBarStyleLightContent; }
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"Ra Menu";
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(done)];
-    UILabel *f = [UILabel new];
-    f.text = RA_CREDIT;
-    f.textAlignment = NSTextAlignmentCenter;
-    f.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    f.textColor = UIColor.secondaryLabelColor;
-    f.frame = CGRectMake(0, 0, 100, 70);
-    self.tableView.tableFooterView = f;
+    self.view.backgroundColor = UIColor.blackColor;
+    self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+
+    // nebula background, slowly breathing, with a dark veil so the text stays readable
+    NSData *jd = [[NSData alloc] initWithBase64EncodedString:kRaBgB64 options:0];
+    _bg = [[UIImageView alloc] initWithImage:[UIImage imageWithData:jd]];
+    _bg.contentMode = UIViewContentModeScaleAspectFill;
+    _bg.clipsToBounds = YES;
+    _bg.frame = self.view.bounds;
+    _bg.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:_bg];
+    CABasicAnimation *z = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    z.fromValue = @1.0; z.toValue = @1.12; z.duration = 22; z.autoreverses = YES; z.repeatCount = HUGE_VALF;
+    z.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [_bg.layer addAnimation:z forKey:@"breathe"];
+    UIView *veil = [[UIView alloc] initWithFrame:self.view.bounds];
+    veil.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    veil.userInteractionEnabled = NO;
+    CAGradientLayer *g = [CAGradientLayer layer];
+    g.frame = UIScreen.mainScreen.bounds;
+    g.colors = @[(id)[UIColor colorWithWhite:0 alpha:0.30].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.62].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.82].CGColor];
+    [veil.layer addSublayer:g];
+    [self.view addSubview:veil];
+
+    _table = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleInsetGrouped];
+    _table.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _table.backgroundColor = UIColor.clearColor;
+    _table.separatorColor = [UIColor colorWithWhite:1 alpha:0.10];
+    _table.dataSource = self; _table.delegate = self;
+    _table.showsVerticalScrollIndicator = NO;
+    [self.view addSubview:_table];
+
+    // header: glowing title
+    UIView *h = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 150)];
+    UILabel *t = [UILabel new];
+    t.text = @"Ra Menu";
+    t.font = [UIFont systemFontOfSize:40 weight:UIFontWeightHeavy];
+    t.textColor = UIColor.whiteColor;
+    t.textAlignment = NSTextAlignmentCenter;
+    t.layer.shadowColor = [UIColor colorWithRed:0.65 green:0.4 blue:1 alpha:1].CGColor;
+    t.layer.shadowOpacity = 0.95; t.layer.shadowRadius = 14; t.layer.shadowOffset = CGSizeZero;
+    t.frame = CGRectMake(0, 62, 100, 50);
+    t.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [h addSubview:t];
+    UILabel *st = [UILabel new];
+    st.text = @"تحكّم بكل ميزة";
+    st.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    st.textColor = [UIColor colorWithWhite:1 alpha:0.65];
+    st.textAlignment = NSTextAlignmentCenter;
+    st.frame = CGRectMake(0, 112, 100, 22);
+    st.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [h addSubview:st];
+    _table.tableHeaderView = h;
+
+    // footer: credit
+    UIView *f = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 110)];
+    UIView *line = [[UIView alloc] initWithFrame:CGRectMake(0, 22, 60, 1)];
+    line.backgroundColor = [UIColor colorWithWhite:1 alpha:0.25];
+    line.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
+    [f addSubview:line];
+    UILabel *c = [UILabel new];
+    c.text = RA_CREDIT;
+    c.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    c.textColor = [UIColor colorWithWhite:1 alpha:0.85];
+    c.textAlignment = NSTextAlignmentCenter;
+    c.frame = CGRectMake(0, 36, 100, 24);
+    c.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [f addSubview:c];
+    _table.tableFooterView = f;
+
+    // close button
+    UIButton *x = [UIButton buttonWithType:UIButtonTypeCustom];
+    x.frame = CGRectMake(0, 0, 36, 36);
+    x.layer.cornerRadius = 18;
+    x.backgroundColor = [UIColor colorWithWhite:1 alpha:0.16];
+    x.tintColor = UIColor.whiteColor;
+    [x setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightBold]] forState:UIControlStateNormal];
+    [x addTarget:self action:@selector(done) forControlEvents:UIControlEventTouchUpInside];
+    x.tag = 77;
+    [self.view addSubview:x];
+}
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    CGFloat w = self.view.bounds.size.width;
+    for (UIView *v in _table.tableHeaderView.subviews) v.frame = CGRectMake(0, v.frame.origin.y, w, v.frame.size.height);
+    for (UIView *v in _table.tableFooterView.subviews) {
+        if ([v isKindOfClass:[UILabel class]]) v.frame = CGRectMake(0, v.frame.origin.y, w, v.frame.size.height);
+        else v.center = CGPointMake(w / 2, v.center.y);
+    }
+    UIView *x = [self.view viewWithTag:77];
+    x.frame = CGRectMake(w - 52, self.view.safeAreaInsets.top + 10, 36, 36);
+    [self.view bringSubviewToFront:x];
+    ((CALayer *)self.view.subviews[1].layer.sublayers.firstObject).frame = self.view.bounds;
 }
 - (void)done { [self dismissViewControllerAnimated:YES completion:nil]; }
 - (NSArray *)groups {
@@ -67,20 +167,36 @@ static UIViewController *raTop(void) {
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)t { return [self groups].count; }
 - (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return [self itemsIn:s].count; }
-- (NSString *)tableView:(UITableView *)t titleForHeaderInSection:(NSInteger)s { return [self groups][s]; }
+- (UIView *)tableView:(UITableView *)t viewForHeaderInSection:(NSInteger)s {
+    UILabel *l = [UILabel new];
+    l.text = [NSString stringWithFormat:@"   %@", [self groups][s]];
+    l.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
+    l.textColor = raAccent();
+    return l;
+}
+- (CGFloat)tableView:(UITableView *)t heightForHeaderInSection:(NSInteger)s { return 34; }
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
     UITableViewCell *c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];
     NSDictionary *d = [self itemsIn:ip.section][ip.row];
+    NSString *key = d[@"key"];
+    c.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.52];
     c.textLabel.text = d[@"title"];
+    c.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+    c.textLabel.textColor = UIColor.whiteColor;
     c.textLabel.numberOfLines = 0;
     c.detailTextLabel.text = d[@"sub"];
+    c.detailTextLabel.font = [UIFont systemFontOfSize:12.5];
+    c.detailTextLabel.textColor = [UIColor colorWithWhite:1 alpha:0.62];
     c.detailTextLabel.numberOfLines = 0;
+    c.imageView.image = [UIImage systemImageNamed:raIcon(key) withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium]];
+    c.imageView.tintColor = raAccent();
     c.selectionStyle = UITableViewCellSelectionStyleNone;
     UISwitch *sw = [UISwitch new];
-    sw.on = raOn(d[@"key"]);
-    NSString *key = d[@"key"];
+    sw.onTintColor = raAccent();
+    sw.on = raOn(key);
     [sw addAction:[UIAction actionWithHandler:^(UIAction *a) {
         [NSUserDefaults.standardUserDefaults setBool:((UISwitch *)a.sender).on forKey:[@"ra." stringByAppendingString:key]];
+        [[UIImpactFeedbackGenerator new] impactOccurred];
     }] forControlEvents:UIControlEventValueChanged];
     c.accessoryView = sw;
     return c;
@@ -91,10 +207,11 @@ static UIViewController *raTop(void) {
 static void raOpenMenu(void) RA_UNUSED;
 static void raOpenMenu(void) {
     UIViewController *top = raTop();
-    if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-    if ([top isKindOfClass:[UINavigationController class]] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-    UINavigationController *n = [[UINavigationController alloc] initWithRootViewController:[RaMenuVC new]];
-    [top presentViewController:n animated:YES completion:nil];
+    if (!top || [top isKindOfClass:[RaMenuVC class]]) return;
+    RaMenuVC *m = [RaMenuVC new];
+    m.modalPresentationStyle = UIModalPresentationFullScreen;
+    m.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    [top presentViewController:m animated:YES completion:nil];
 }
 
 @interface RaOpener : NSObject
