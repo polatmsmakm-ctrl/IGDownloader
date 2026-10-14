@@ -14,7 +14,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r10-videoonly"
+#define IGD_BUILD @"r11-extras"
 
 #pragma mark - Runtime helpers
 
@@ -290,15 +290,13 @@ static id IGDFindCurrentMediaB(NSMutableString *rep, int budget) {
 }
 static id IGDFindCurrentMedia(NSMutableString *rep) { return IGDFindCurrentMediaB(rep, 400000); }
 
-// Cheap check run once a second: is a *video* currently on screen (reel, explore, story, shared video in a chat)?
+// Cheap check run once a second: should the button show? (a video is on screen; photos too if enabled)
 static BOOL IGDVideoVisible(void) {
     static CFAbsoluteTime lastWalk; static BOOL cached;
     NSMutableString *rep = [NSMutableString new];
     id m = nil;
-    NSMutableArray *dummy = nil; (void)dummy;
-    // 1) reels / explore reels: the registered, on-screen UFI (fast)
     gBudget = 20000;
-    m = IGDMediaFromRegistry(rep);
+    m = IGDMediaFromRegistry(rep);          // reels / explore reels: the registered on-screen UFI (fast)
     if (!m) {
         CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
         if (now - lastWalk < 1.4) return cached;      // throttle the heavier view walk
@@ -306,8 +304,9 @@ static BOOL IGDVideoVisible(void) {
         m = IGDFindCurrentMediaB(rep, 120000);
     }
     BOOL v = m && (IGDSend(m, "video") != nil || IGDSend(m, "rawVideo") != nil);
-    cached = v;
-    return v;
+    BOOL photo = m && !v && (IGDSend(m, "photo") != nil || IGDIvarByName(m, "_items") != nil);
+    cached = v || (photo && raOn(@"dl.photos"));
+    return cached;
 }
 
 #pragma mark - Extracting URLs
@@ -406,6 +405,73 @@ static NSArray<NSURL *> *IGDURLsForMedia(id media, NSMutableString *rep) {
     return good;
 }
 
+#pragma mark - Photos, carousels, caption
+
+static void IGDDeepURLs(id o, NSMutableOrderedSet *out, int depth) {
+    if (!o || depth < 0) return;
+    if ([o isKindOfClass:[NSURL class]] || [o isKindOfClass:[NSString class]]) { IGDCollect(o, out, 0); return; }
+    if ([o isKindOfClass:[NSArray class]] || [o isKindOfClass:[NSSet class]]) {
+        int n = 0; for (id e in o) { if (++n > 40) break; IGDDeepURLs(e, out, depth); } return;
+    }
+    if ([o isKindOfClass:[NSDictionary class]]) {
+        int n = 0; for (id e in [o allValues]) { if (++n > 40) break; IGDDeepURLs(e, out, depth); } return;
+    }
+    if (depth == 0 || !IGDInterestingClass(object_getClass(o))) return;
+    for (NSValue *v in IGDIvars(object_getClass(o))) IGDDeepURLs(IGDAnyObjIvar(o, [v pointerValue]), out, depth - 1);
+}
+
+static NSInteger IGDPixels(NSURL *u) {
+    static NSRegularExpression *re;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ re = [NSRegularExpression regularExpressionWithPattern:@"(\\d{3,4})x(\\d{3,4})" options:0 error:nil]; });
+    NSString *s = u.absoluteString;
+    NSInteger best = 0;
+    for (NSTextCheckingResult *m in [re matchesInString:s options:0 range:NSMakeRange(0, s.length)])
+        best = MAX(best, [[s substringWithRange:[m rangeAtIndex:1]] integerValue] * [[s substringWithRange:[m rangeAtIndex:2]] integerValue]);
+    return best;
+}
+
+// Highest-resolution image URL of one (non-carousel) media item.
+static NSURL *IGDBestPhotoURL(id media) {
+    id photo = IGDSend(media, "photo");
+    if (!photo) return nil;
+    NSMutableOrderedSet *all = [NSMutableOrderedSet new];
+    IGDDeepURLs(IGDIvarByName(photo, "_originalImageVersions"), all, 2);
+    IGDDeepURLs(IGDIvarByName(photo, "_processedImageVersions"), all, 2);
+    NSURL *best = nil; NSInteger bp = -1;
+    for (NSURL *u in all) {
+        NSString *s = u.absoluteString.lowercaseString;
+        if ([s containsString:@".mp4"] || (![s containsString:@"cdninstagram"] && ![s containsString:@"fbcdn"])) continue;
+        NSInteger p = IGDPixels(u);
+        if (p > bp) { bp = p; best = u; }
+    }
+    return best;
+}
+
+// Carousel children (each is an IGMedia), or nil when this is a single item.
+static NSArray *IGDChildren(id media) {
+    id items = IGDIvarByName(media, "_items");
+    if ([items isKindOfClass:[NSArray class]] && [(NSArray *)items count] > 1) return items;
+    return nil;
+}
+
+static NSString *IGDCaptionText(id media) {
+    id cm = IGDIvarByName(media, "_computedCaption");
+    if (!cm) return nil;
+    for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
+        id t = IGDSend(cm, n);
+        if ([t isKindOfClass:[NSString class]] && [t length]) return t;
+    }
+    id t = IGDIvarByName(cm, "_truncatedText");
+    if ([t isKindOfClass:[NSString class]] && [t length]) return t;
+    id d = IGDIvarByName(cm, "_internalApiCommentDict");
+    for (const char *n : (const char *[]){"text", "commentText"}) {
+        id v = IGDSend(d, n);
+        if ([v isKindOfClass:[NSString class]] && [v length]) return v;
+    }
+    return nil;
+}
+
 #pragma mark - UI helpers
 
 static UIButton *gButton;
@@ -481,6 +547,44 @@ static void IGDSaveToPhotos(NSURL *file) {
 }
 
 static NSString *gLastFail;
+static int gMode;   // 0 = save video to Photos, 1 = export audio only
+
+static void IGDSaveImage(NSURL *u) {
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:IGDClean(u)];
+    [[[NSURLSession sharedSession] downloadTaskWithRequest:req completionHandler:^(NSURL *loc, NSURLResponse *resp, NSError *err) {
+        NSData *d = loc ? [NSData dataWithContentsOfURL:loc] : nil;
+        if (err || !d || ![UIImage imageWithData:d]) { IGDToast(@"تعذّر تحميل الصورة"); return; }
+        NSURL *dst = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"IGD-%u.jpg", arc4random()]]];
+        [d writeToURL:dst atomically:YES];
+        [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus st) {
+            if (st != PHAuthorizationStatusAuthorized && st != PHAuthorizationStatusLimited) { IGDToast(@"Allow Photos access in Settings"); return; }
+            [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+                [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:dst];
+            } completionHandler:^(BOOL ok, NSError *e) {
+                [[NSFileManager defaultManager] removeItemAtURL:dst error:nil];
+                IGDToast(ok ? @"تم حفظ الصورة ✓" : @"فشل حفظ الصورة");
+            }];
+        }];
+    }] resume];
+}
+
+static void IGDExportAudio(NSURL *video) {
+    AVURLAsset *as = [AVURLAsset assetWithURL:video];
+    AVAssetExportSession *ex = [[AVAssetExportSession alloc] initWithAsset:as presetName:AVAssetExportPresetAppleM4A];
+    NSURL *out = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"IGD-audio-%u.m4a", arc4random()]]];
+    ex.outputURL = out;
+    ex.outputFileType = AVFileTypeAppleM4A;
+    [ex exportAsynchronouslyWithCompletionHandler:^{
+        [[NSFileManager defaultManager] removeItemAtURL:video error:nil];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (ex.status != AVAssetExportSessionStatusCompleted) { IGDToast(@"تعذّر استخراج الصوت (الفيديو بدون صوت؟)"); return; }
+            UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[out] applicationActivities:nil];
+            UIViewController *top = IGDTopVC();
+            vc.popoverPresentationController.sourceView = top.view;
+            [top presentViewController:vc animated:YES completion:nil];
+        });
+    }];
+}
 
 static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
     if (idx >= urls.count) {
@@ -513,12 +617,13 @@ static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
             IGDDownloadFrom(urls, idx + 1);
             return;
         }
-        IGDSaveToPhotos(dst);
+        if (gMode == 1) IGDExportAudio(dst); else IGDSaveToPhotos(dst);
     }];
     [t resume];
 }
 
 static void IGDTap(void) {
+    gMode = 0;
     NSMutableString *rep = [NSMutableString new];
     id media = IGDFindCurrentMedia(rep);
     if (!media) {
@@ -526,10 +631,41 @@ static void IGDTap(void) {
         IGDToast(@"No video found on screen (hold button for report)");
         return;
     }
-    NSArray *urls = IGDURLsForMedia(media, rep);
+    NSArray *kids = IGDChildren(media);
+    NSArray *targets = kids ?: @[media];
+    int nv = 0, np = 0, bad = 0;
+    for (id t in targets) {
+        if (IGDSend(t, "video") || IGDSend(t, "rawVideo")) {
+            NSArray *urls = IGDURLsForMedia(t, rep);
+            if (urls.count) { nv++; IGDDownloadFrom(urls, 0); } else bad++;
+        } else {
+            NSURL *u = IGDBestPhotoURL(t);
+            if (u) { np++; [rep appendFormat:@"photo: %@\n", IGDShort(u)]; IGDSaveImage(u); } else bad++;
+        }
+    }
     gLastReport = rep;
-    if (!urls.count) { IGDToast(@"Couldn't find a video link (hold button for report)"); return; }
+    if (!nv && !np) { IGDToast(@"Couldn't find a link (hold button for options)"); return; }
+    if (kids) IGDToast([NSString stringWithFormat:@"تحميل %d فيديو و %d صورة%@", nv, np, bad ? @" (بعضها تعذّر)" : @""]);
+}
+
+static void IGDTapAudio(void) {
+    NSMutableString *rep = [NSMutableString new];
+    id media = IGDFindCurrentMedia(rep);
+    NSArray *kids = media ? IGDChildren(media) : nil;
+    if (kids) for (id k in kids) if (IGDSend(k, "video")) { media = k; break; }
+    NSArray *urls = media ? IGDURLsForMedia(media, rep) : nil;
+    if (!urls.count) { IGDToast(@"ما لقيت فيديو أستخرج منه الصوت"); return; }
+    gMode = 1;
     IGDDownloadFrom(urls, 0);
+}
+
+static void IGDTapCaption(void) {
+    NSMutableString *rep = [NSMutableString new];
+    id media = IGDFindCurrentMedia(rep);
+    NSString *c = media ? IGDCaptionText(media) : nil;
+    if (!c.length) { IGDToast(@"ما لقيت كابشن لهذا المنشور"); return; }
+    UIPasteboard.generalPasteboard.string = c;
+    IGDToast(@"تم نسخ الكابشن ✓");
 }
 
 #pragma mark - Floating button
@@ -554,8 +690,18 @@ static void IGDTap(void) {
 }
 - (void)hold:(UILongPressGestureRecognizer *)g {
     if (g.state != UIGestureRecognizerStateBegan) return;
-    if (!gLastReport) { NSMutableString *r = [NSMutableString new]; id m = IGDFindCurrentMedia(r); if (m) IGDURLsForMedia(m, r); gLastReport = r; }
-    IGDShowReport(gLastReport);
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"Ra Downloader" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [a addAction:[UIAlertAction actionWithTitle:@"استخراج الصوت فقط (m4a)" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) { IGDTapAudio(); }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"نسخ الكابشن" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) { IGDTapCaption(); }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"تقرير التشخيص" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        if (!gLastReport) { NSMutableString *r = [NSMutableString new]; id m = IGDFindCurrentMedia(r); if (m) IGDURLsForMedia(m, r); gLastReport = r; }
+        IGDShowReport(gLastReport);
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    UIViewController *top = IGDTopVC();
+    a.popoverPresentationController.sourceView = g.view;
+    a.popoverPresentationController.sourceRect = g.view.bounds;
+    [top presentViewController:a animated:YES completion:nil];
 }
 @end
 
@@ -607,7 +753,8 @@ static void IGDEnsureButton(void) {
 
 __attribute__((constructor)) static void IGDInit(void) {
     NSLog(@"[IGDownloader] %@ loaded", IGD_BUILD);
-    raRegister(@"التحميل", @"dl", @"زر التحميل العائم", @"تحميل فيديوهات الريلز والستوري");
+    raRegister(@"التحميل", @"dl", @"زر التحميل العائم", @"فيديو أو صورة أو كل صور الكاروسيل. اضغط مطوّلاً للصوت فقط ونسخ الكابشن");
+    raRegisterD(@"التحميل", @"dl.photos", @"إظهار الزر على الصور أيضاً", @"افتراضياً يظهر مع الفيديو فقط", NO);
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer *t) { IGDEnsureButton(); }];
     });

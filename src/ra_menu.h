@@ -20,7 +20,9 @@ static NSMutableArray *raRegistry(void) {
 static BOOL raOn(NSString *key) RA_UNUSED;
 static BOOL raOn(NSString *key) {
     id v = [NSUserDefaults.standardUserDefaults objectForKey:[@"ra." stringByAppendingString:key]];
-    return v ? [v boolValue] : YES;   // everything defaults to ON
+    if (v) return [v boolValue];
+    for (NSDictionary *d in raRegistry()) if ([d[@"key"] isEqual:key]) return d[@"off"] ? NO : YES;   // default ON unless registered as off
+    return YES;
 }
 
 static UIViewController *raTop(void) {
@@ -143,10 +145,14 @@ static void raInstallEntryPoints(void) {
     }];
 }
 
-static void raRegister(NSString *group, NSString *key, NSString *title, NSString *sub) RA_UNUSED;
-static void raRegister(NSString *group, NSString *key, NSString *title, NSString *sub) {
+static void raRegisterD(NSString *group, NSString *key, NSString *title, NSString *sub, BOOL defaultOn) RA_UNUSED;
+static void raRegisterD(NSString *group, NSString *key, NSString *title, NSString *sub, BOOL defaultOn) {
     NSMutableArray *r = raRegistry();
     for (NSDictionary *d in r) if ([d[@"key"] isEqual:key]) return;
-    [r addObject:@{@"group": group, @"key": key, @"title": title, @"sub": sub ?: @""}];
+    NSMutableDictionary *e = [@{@"group": group, @"key": key, @"title": title, @"sub": sub ?: @""} mutableCopy];
+    if (!defaultOn) e[@"off"] = @YES;
+    [r addObject:e];
     dispatch_async(dispatch_get_main_queue(), ^{ raInstallEntryPoints(); });
 }
+static void raRegister(NSString *group, NSString *key, NSString *title, NSString *sub) RA_UNUSED;
+static void raRegister(NSString *group, NSString *key, NSString *title, NSString *sub) { raRegisterD(group, key, title, sub, YES); }
