@@ -1,5 +1,6 @@
 // IGHQ: send photos/videos at original quality (best effort, based on symbol names).
 #import "igd_common.h"
+#include <dlfcn.h>
 #define BUILD @"q1"
 
 static void hookStrategy(void) {
@@ -22,7 +23,11 @@ static void hookStrategy(void) {
 static void forceFlag(void) {
     if (!raOn(@"hq.send")) return;
     NSUserDefaults *d = NSUserDefaults.standardUserDefaults;
-    for (NSString *k in @[@"_IGUploadHighQuality", @"IGUploadHighQuality"]) {
+    NSMutableArray *keys = [@[@"_IGUploadHighQuality", @"IGUploadHighQuality"] mutableCopy];
+    // "IGUploadHighQuality" is an exported string constant in the app: use its real value as the key too
+    NSString **sym = (NSString **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
+    if (sym && [*sym isKindOfClass:[NSString class]]) [keys addObject:*sym];
+    for (NSString *k in keys) {
         if (![d boolForKey:k]) [d setBool:YES forKey:k];
     }
 }
@@ -33,5 +38,6 @@ __attribute__((constructor)) static void init(void) {
     igdRun(@"IGHQ", BUILD, ^{
         hookStrategy();
         forceFlag();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), forceFlag);
     });
 }
