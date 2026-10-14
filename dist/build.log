@@ -39,16 +39,16 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
 1 warning generated.
 OK RaTweak
 total 5200
-drwxr-xr-x  13 runner  staff     416 Oct 14 19:35 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 19:34 ..
--rw-r--r--   1 runner  staff    1596 Oct 14 19:35 build.log
--rwxr-xr-x   1 runner  staff  268384 Oct 14 19:35 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  313152 Oct 14 19:35 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  267872 Oct 14 19:35 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  268864 Oct 14 19:35 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  267904 Oct 14 19:35 IGLock.dylib
--rwxr-xr-x   1 runner  staff  267488 Oct 14 19:35 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  269728 Oct 14 19:35 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  297184 Oct 14 19:35 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 19:35 obj
--rwxr-xr-x   1 runner  staff  419680 Oct 14 19:35 RaTweak.dylib
+drwxr-xr-x  13 runner  staff     416 Oct 14 19:42 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:41 ..
+-rw-r--r--   1 runner  staff    1596 Oct 14 19:42 build.log
+-rwxr-xr-x   1 runner  staff  268384 Oct 14 19:41 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  313152 Oct 14 19:41 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  267872 Oct 14 19:41 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  268864 Oct 14 19:41 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  267904 Oct 14 19:41 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  267488 Oct 14 19:41 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  269728 Oct 14 19:41 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  297968 Oct 14 19:41 IGTools.dylib
+drwxr-xr-x  11 runner  staff     352 Oct 14 19:42 obj
+-rwxr-xr-x   1 runner  staff  420464 Oct 14 19:42 RaTweak.dylib
