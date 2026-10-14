@@ -38,7 +38,11 @@ jobs:
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -fobjc-arc -Os -Wno-deprecated-declarations -c src/ra_impl.m -o build/obj/ra_impl.o || exit 1
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj/*.o \
              -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
-             -install_name @rpath/RaTweak.dylib -o build/RaTweak.dylib && codesign -f -s - build/RaTweak.dylib && echo "OK RaTweak") 2>&1 | tee -a build/build.log
+             -install_name @rpath/RaTweak.dylib -o build/RaTweak.dylib && codesign -f -s - build/RaTweak.dylib && echo "OK RaTweak"
+           mkdir -p build/obj_lite && cp build/obj/*.o build/obj_lite/ && rm build/obj_lite/IGTools.o
+           xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj_lite/*.o \
+             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
+             -install_name @rpath/RaTweakLite.dylib -o build/RaTweakLite.dylib && codesign -f -s - build/RaTweakLite.dylib && echo "OK RaTweakLite (no chat tools)") 2>&1 | tee -a build/build.log
           ls -la build | tee -a build/build.log
 
       - uses: actions/upload-artifact@v4
