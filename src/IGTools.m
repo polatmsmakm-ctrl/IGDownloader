@@ -4,7 +4,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <PhotosUI/PhotosUI.h>
-#define BUILD @"t2"
+#define BUILD @"t3"
 
 static BOOL gRunning, gStop;
 
@@ -240,7 +240,7 @@ static void convertVideoToOgg(NSURL *video, void (^done)(NSString *err)) {
         NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-voice-%u.ogg", arc4random()]];
         [ogg writeToFile:path atomically:YES];
         vlog(@"ogg ready: %lu bytes, %.1f sec", (unsigned long)ogg.length, (double)frames / 48000.0);
-        dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; done(nil); });
+        dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
     });
 }
 
@@ -280,11 +280,63 @@ static void swapRecordedFile(void) {
     if (!n) vlog(@"stop() seen but no recent .ogg file found yet");
 }
 
+
+// ---- fallback: watch for the recording file instead of relying on stop() ---------------------
+static NSTimer *gPoll;
+static NSMutableDictionary<NSString *, NSDate *> *gSeenM;   // path -> last mtime we saw
+static NSMutableSet<NSString *> *gLogged, *gSwappedKeys;
+
+static void pollScan(NSString *dir, NSData *repl, int depth, int *logs) {
+    for (NSString *it in [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil]) {
+        NSString *p = [dir stringByAppendingPathComponent:it];
+        BOOL isDir = NO;
+        if (![NSFileManager.defaultManager fileExistsAtPath:p isDirectory:&isDir]) continue;
+        if (isDir) { if (depth < 3) pollScan(p, repl, depth + 1, logs); continue; }
+        if ([p isEqualToString:gPendingOgg]) continue;
+        NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+        NSDate *mt = at.fileModificationDate;
+        if (!mt || -[mt timeIntervalSinceNow] > 4 || at.fileSize == 0) continue;
+        BOOL ogg = looksOgg(p) || [@[@"ogg", @"opus", @"oga"] containsObject:p.pathExtension.lowercaseString];
+        if (![gLogged containsObject:p] && *logs < 3) {
+            [gLogged addObject:p]; (*logs)++;
+            vlog(@"new file: %@ (%llu bytes, ogg=%d)", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"], at.fileSize, ogg);
+        }
+        if (!ogg) continue;
+        NSDate *prev = gSeenM[p]; gSeenM[p] = mt;
+        NSString *key = [NSString stringWithFormat:@"%@|%f", p, mt.timeIntervalSince1970];
+        if (prev && [prev isEqualToDate:mt] && ![gSwappedKeys containsObject:key]) {   // unchanged for a tick = recording finished
+            BOOL ok = [repl writeToFile:p atomically:NO];
+            [gSwappedKeys addObject:key];
+            vlog(@"poll: swapped %@ (%llu bytes) ok=%d", p.lastPathComponent, at.fileSize, ok);
+            NSDictionary *at2 = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+            if (at2.fileModificationDate) [gSwappedKeys addObject:[NSString stringWithFormat:@"%@|%f", p, at2.fileModificationDate.timeIntervalSince1970]];
+        }
+    }
+}
+static void startPolling(void) {
+    [gPoll invalidate];
+    gSeenM = [NSMutableDictionary new]; gLogged = [NSMutableSet new]; gSwappedKeys = [NSMutableSet new];
+    gPoll = [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *t) {
+        if (!gPendingOgg || -[gPendingAt timeIntervalSinceNow] > 600) { [t invalidate]; gPoll = nil; return; }
+        NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
+        if (!repl.length) return;
+        NSString *home = NSHomeDirectory();
+        int logs = 0;
+        for (NSString *r in @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"], [home stringByAppendingPathComponent:@"Documents"], [home stringByAppendingPathComponent:@"Library/Application Support"]])
+            pollScan(r, repl, 0, &logs);
+    }];
+}
+
 static void hookRecorder(void) {
+    igdHook("OggOpusVoiceMessageRecorder", "start", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
+        if (nargs != 0) return nil;
+        return ^int(id self) { vlog(@"recorder start() pending=%d", gPendingOgg != nil); return ((int (*)(id, SEL))orig)(self, s); };
+    });
     igdHook("OggOpusVoiceMessageRecorder", "stop", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
         if (nargs != 0) return nil;
         return ^BOOL(id self) {
             BOOL r = ((BOOL (*)(id, SEL))orig)(self, s);
+            vlog(@"recorder stop() pending=%d", gPendingOgg != nil);
             if (gPendingOgg) {
                 vlog(@"recorder stop() -> swapping");
                 swapRecordedFile();
