@@ -101,11 +101,12 @@ static NSDate *gPendingAt;
 static NSMutableString *gVoiceLog;
 static void vlog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1, 2);
 static void vlog(NSString *fmt, ...) {
-    if (!gVoiceLog) gVoiceLog = [NSMutableString new];
+    static NSObject *lock; static dispatch_once_t lo; dispatch_once(&lo, ^{ lock = [NSObject new]; });
+    @synchronized (lock) { if (!gVoiceLog) gVoiceLog = [NSMutableString new]; }
     va_list ap; va_start(ap, fmt);
     NSString *m = [[NSString alloc] initWithFormat:fmt arguments:ap];
     va_end(ap);
-    [gVoiceLog appendFormat:@"%@\n", m];
+    @synchronized (lock) { [gVoiceLog appendFormat:@"%@\n", m]; }
     NSLog(@"[IGTools voice] %@", m);
 }
 
