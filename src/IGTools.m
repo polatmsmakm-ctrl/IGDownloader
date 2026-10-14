@@ -1,7 +1,10 @@
 // IGTools: chat tools opened by long-pressing the eye button in a chat.
 //   • send the same message N times in a row (with a delay between sends)
 #import "igd_common.h"
-#define BUILD @"t1"
+#import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
+#import <PhotosUI/PhotosUI.h>
+#define BUILD @"t2"
 
 static BOOL gRunning, gStop;
 
@@ -89,8 +92,278 @@ static void runRepeat(__weak UIViewController *thread, NSString *text, NSInteger
     step();
 }
 
+
+// =============================== video -> voice message ===============================
+// 1) pick a video, 2) extract its audio and encode Ogg Opus (the format Instagram voice messages use),
+// 3) the next voice message you record is swapped for that file the moment the recording stops.
+static NSString *gPendingOgg;
+static NSDate *gPendingAt;
+static NSMutableString *gVoiceLog;
+static void vlog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1, 2);
+static void vlog(NSString *fmt, ...) {
+    if (!gVoiceLog) gVoiceLog = [NSMutableString new];
+    va_list ap; va_start(ap, fmt);
+    NSString *m = [[NSString alloc] initWithFormat:fmt arguments:ap];
+    va_end(ap);
+    [gVoiceLog appendFormat:@"%@\n", m];
+    NSLog(@"[IGTools voice] %@", m);
+}
+
+// ---- Ogg container -------------------------------------------------------------------
+static uint32_t oggCRC(const uint8_t *d, size_t n) {
+    static uint32_t T[256]; static dispatch_once_t o;
+    dispatch_once(&o, ^{ for (uint32_t i = 0; i < 256; i++) { uint32_t r = i << 24; for (int k = 0; k < 8; k++) r = (r & 0x80000000) ? (r << 1) ^ 0x04C11DB7 : (r << 1); T[i] = r; } });
+    uint32_t c = 0;
+    for (size_t i = 0; i < n; i++) c = (c << 8) ^ T[((c >> 24) & 0xFF) ^ d[i]];
+    return c;
+}
+static void oggPage(NSMutableData *out, uint8_t type, uint64_t granule, uint32_t serial, uint32_t seq, NSArray<NSData *> *packets) {
+    NSMutableData *lace = [NSMutableData data], *body = [NSMutableData data];
+    for (NSData *p in packets) {
+        NSUInteger len = p.length;
+        while (len >= 255) { uint8_t v = 255; [lace appendBytes:&v length:1]; len -= 255; }
+        uint8_t v = (uint8_t)len; [lace appendBytes:&v length:1];
+        [body appendData:p];
+    }
+    NSMutableData *pg = [NSMutableData data];
+    uint8_t h[27] = {'O','g','g','S',0,type};
+    memcpy(h + 6, &granule, 8);        // little endian on arm64
+    memcpy(h + 14, &serial, 4);
+    memcpy(h + 18, &seq, 4);
+    h[26] = (uint8_t)lace.length;
+    [pg appendBytes:h length:27];
+    [pg appendData:lace]; [pg appendData:body];
+    uint32_t crc = oggCRC(pg.bytes, pg.length);
+    memcpy((uint8_t *)pg.mutableBytes + 22, &crc, 4);
+    [out appendData:pg];
+}
+
+static NSData *oggFromOpusPackets(NSArray<NSData *> *pkts, uint32_t framesPerPacket, uint16_t preSkip) {
+    NSMutableData *out = [NSMutableData data];
+    uint32_t serial = arc4random();
+    NSMutableData *head = [NSMutableData data];
+    [head appendBytes:"OpusHead" length:8];
+    uint8_t b = 1; [head appendBytes:&b length:1];         // version
+    b = 1; [head appendBytes:&b length:1];                 // channels
+    [head appendBytes:&preSkip length:2];
+    uint32_t rate = 48000; [head appendBytes:&rate length:4];
+    uint16_t gain = 0; [head appendBytes:&gain length:2];
+    b = 0; [head appendBytes:&b length:1];                 // mapping family
+    oggPage(out, 0x02, 0, serial, 0, @[head]);
+    NSMutableData *tags = [NSMutableData data];
+    [tags appendBytes:"OpusTags" length:8];
+    const char *vendor = "RaTweak"; uint32_t vl = (uint32_t)strlen(vendor);
+    [tags appendBytes:&vl length:4]; [tags appendBytes:vendor length:vl];
+    uint32_t zero = 0; [tags appendBytes:&zero length:4];
+    oggPage(out, 0x00, 0, serial, 1, @[tags]);
+    uint32_t seq = 2; uint64_t gran = preSkip;
+    NSUInteger i = 0, per = 20;
+    while (i < pkts.count) {
+        NSUInteger e = MIN(i + per, pkts.count);
+        gran += (uint64_t)(e - i) * framesPerPacket;
+        oggPage(out, e == pkts.count ? 0x04 : 0x00, gran, serial, seq++, [pkts subarrayWithRange:NSMakeRange(i, e - i)]);
+        i = e;
+    }
+    return out;
+}
+
+// ---- video -> PCM -> Opus (CAF via AudioToolbox) -> Ogg ---------------------------------
+static void convertVideoToOgg(NSURL *video, void (^done)(NSString *err)) {
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSError *e = nil;
+        AVURLAsset *as = [AVURLAsset assetWithURL:video];
+        AVAssetTrack *tr = [as tracksWithMediaType:AVMediaTypeAudio].firstObject;
+        if (!tr) { done(@"الفيديو ما فيه صوت"); return; }
+        AVAssetReader *rd = [AVAssetReader assetReaderWithAsset:as error:&e];
+        if (!rd) { done([NSString stringWithFormat:@"قراءة الفيديو: %@", e.localizedDescription]); return; }
+        NSDictionary *pcm = @{AVFormatIDKey: @(kAudioFormatLinearPCM), AVSampleRateKey: @48000, AVNumberOfChannelsKey: @1,
+                              AVLinearPCMBitDepthKey: @16, AVLinearPCMIsFloatKey: @NO, AVLinearPCMIsBigEndianKey: @NO, AVLinearPCMIsNonInterleaved: @NO};
+        AVAssetReaderTrackOutput *out = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:tr outputSettings:pcm];
+        [rd addOutput:out];
+        rd.timeRange = CMTimeRangeMake(kCMTimeZero, CMTimeMakeWithSeconds(180, 600));   // cap at 3 minutes
+        if (![rd startReading]) { done(@"ما قدرت أقرأ الصوت"); return; }
+
+        NSURL *caf = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-voice-%u.caf", arc4random()]]];
+        AVAudioFormat *pf = [[AVAudioFormat alloc] initWithCommonFormat:AVAudioPCMFormatInt16 sampleRate:48000 channels:1 interleaved:YES];
+        AVAudioFile *af = [[AVAudioFile alloc] initForWriting:caf
+            settings:@{AVFormatIDKey: @(kAudioFormatOpus), AVSampleRateKey: @48000, AVNumberOfChannelsKey: @1, AVEncoderBitRateKey: @32000}
+            commonFormat:AVAudioPCMFormatInt16 interleaved:YES error:&e];
+        if (!af) { done([NSString stringWithFormat:@"مشفّر Opus ما اشتغل: %@", e.localizedDescription]); return; }
+        long long frames = 0;
+        CMSampleBufferRef sb;
+        while ((sb = [out copyNextSampleBuffer])) {
+            CMBlockBufferRef bb = CMSampleBufferGetDataBuffer(sb);
+            size_t len = 0; char *ptr = NULL;
+            if (bb && CMBlockBufferGetDataPointer(bb, 0, NULL, &len, &ptr) == kCMBlockBufferNoErr && len >= 2) {
+                AVAudioFrameCount n = (AVAudioFrameCount)(len / 2);
+                AVAudioPCMBuffer *pb = [[AVAudioPCMBuffer alloc] initWithPCMFormat:pf frameCapacity:n];
+                pb.frameLength = n;
+                memcpy(pb.int16ChannelData[0], ptr, n * 2);
+                if (![af writeFromBuffer:pb error:&e]) { CFRelease(sb); done([NSString stringWithFormat:@"كتابة Opus: %@", e.localizedDescription]); return; }
+                frames += n;
+            }
+            CFRelease(sb);
+        }
+        af = nil;   // finalise the file
+        if (!frames) { done(@"ما طلع صوت من الفيديو"); return; }
+
+        AudioFileID fid = NULL;
+        if (AudioFileOpenURL((__bridge CFURLRef)caf, kAudioFileReadPermission, kAudioFileCAFType, &fid) != noErr) { done(@"ما قدرت أفتح ملف Opus"); return; }
+        AudioStreamBasicDescription asbd; UInt32 sz = sizeof asbd;
+        AudioFileGetProperty(fid, kAudioFilePropertyDataFormat, &sz, &asbd);
+        UInt64 npk = 0; sz = sizeof npk;
+        AudioFileGetProperty(fid, kAudioFilePropertyAudioDataPacketCount, &sz, &npk);
+        AudioFilePacketTableInfo pti = {0}; sz = sizeof pti;
+        AudioFileGetProperty(fid, kAudioFilePropertyPacketTableInfo, &sz, &pti);
+        UInt32 maxp = 0; sz = sizeof maxp;
+        AudioFileGetProperty(fid, kAudioFilePropertyMaximumPacketSize, &sz, &maxp);
+        uint32_t fpp = asbd.mFramesPerPacket ?: 960;
+        vlog(@"opus: %llu packets, %u frames/packet, maxPacket %u, priming %d", npk, fpp, maxp, (int)pti.mPrimingFrames);
+
+        NSMutableArray<NSData *> *pkts = [NSMutableArray new];
+        UInt64 idx = 0;
+        while (idx < npk) {
+            UInt32 np = (UInt32)MIN((UInt64)64, npk - idx);
+            UInt32 bytes = np * (maxp ?: 1500);
+            NSMutableData *buf = [NSMutableData dataWithLength:bytes];
+            AudioStreamPacketDescription *descs = calloc(np, sizeof *descs);
+            OSStatus st = AudioFileReadPacketData(fid, false, &bytes, descs, idx, &np, buf.mutableBytes);
+            if (st != noErr || !np) { free(descs); break; }
+            for (UInt32 k = 0; k < np; k++) [pkts addObject:[buf subdataWithRange:NSMakeRange(descs[k].mStartOffset, descs[k].mDataByteSize)]];
+            free(descs);
+            idx += np;
+        }
+        AudioFileClose(fid);
+        [[NSFileManager defaultManager] removeItemAtURL:caf error:nil];
+        if (!pkts.count) { done(@"ما قدرت أقرأ حزم Opus"); return; }
+        NSData *ogg = oggFromOpusPackets(pkts, fpp, pti.mPrimingFrames ? (uint16_t)pti.mPrimingFrames : 312);
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-voice-%u.ogg", arc4random()]];
+        [ogg writeToFile:path atomically:YES];
+        vlog(@"ogg ready: %lu bytes, %.1f sec", (unsigned long)ogg.length, (double)frames / 48000.0);
+        dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; done(nil); });
+    });
+}
+
+// ---- swap the file Instagram just recorded -----------------------------------------------
+static BOOL looksOgg(NSString *path) {
+    NSFileHandle *h = [NSFileHandle fileHandleForReadingAtPath:path];
+    NSData *d = [h readDataOfLength:4]; [h closeFile];
+    return d.length == 4 && memcmp(d.bytes, "OggS", 4) == 0;
+}
+static int swapInDir(NSString *dir, NSData *repl, int depth) {
+    int n = 0;
+    NSArray *items = [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil];
+    for (NSString *it in items) {
+        NSString *p = [dir stringByAppendingPathComponent:it];
+        BOOL isDir = NO;
+        if (![NSFileManager.defaultManager fileExistsAtPath:p isDirectory:&isDir]) continue;
+        if (isDir) { if (depth < 3) n += swapInDir(p, repl, depth + 1); continue; }
+        if ([p isEqualToString:gPendingOgg]) continue;
+        NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+        if (-[at.fileModificationDate timeIntervalSinceNow] > 20 || at.fileSize == 0) continue;
+        NSString *ext = p.pathExtension.lowercaseString;
+        if (!([ext isEqualToString:@"ogg"] || [ext isEqualToString:@"opus"] || [ext isEqualToString:@"oga"] || looksOgg(p))) continue;
+        BOOL ok = [repl writeToFile:p atomically:NO];     // same inode: Instagram may still hold it open
+        vlog(@"swapped %@ (%llu bytes before) ok=%d", p.lastPathComponent, at.fileSize, ok);
+        n++;
+    }
+    return n;
+}
+static void swapRecordedFile(void) {
+    if (!gPendingOgg || -[gPendingAt timeIntervalSinceNow] > 600) return;
+    NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
+    if (!repl.length) return;
+    NSString *home = NSHomeDirectory();
+    int n = 0;
+    for (NSString *r in @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"], [home stringByAppendingPathComponent:@"Documents"], [home stringByAppendingPathComponent:@"Library"]])
+        n += swapInDir(r, repl, 0);
+    if (!n) vlog(@"stop() seen but no recent .ogg file found yet");
+}
+
+static void hookRecorder(void) {
+    igdHook("OggOpusVoiceMessageRecorder", "stop", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
+        if (nargs != 0) return nil;
+        return ^BOOL(id self) {
+            BOOL r = ((BOOL (*)(id, SEL))orig)(self, s);
+            if (gPendingOgg) {
+                vlog(@"recorder stop() -> swapping");
+                swapRecordedFile();
+                for (NSNumber *d in @[@0.15, @0.5, @1.2]) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(d.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ swapRecordedFile(); });
+            }
+            return r;
+        };
+    });
+}
+
+@interface IGToolsPicker : NSObject <PHPickerViewControllerDelegate>
+@end
+@implementation IGToolsPicker
+- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results {
+    [picker dismissViewControllerAnimated:YES completion:nil];
+    PHPickerResult *r = results.firstObject;
+    if (!r) return;
+    igdToast(@"أحوّل صوت الفيديو…");
+    [r.itemProvider loadFileRepresentationForTypeIdentifier:@"public.movie" completionHandler:^(NSURL *url, NSError *err) {
+        if (!url) { igdToast(@"ما قدرت أقرأ الفيديو"); return; }
+        NSURL *copy = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"ra-src-%u.%@", arc4random(), url.pathExtension ?: @"mov"]]];
+        [[NSFileManager defaultManager] copyItemAtURL:url toURL:copy error:nil];
+        convertVideoToOgg(copy, ^(NSString *e) {
+            [[NSFileManager defaultManager] removeItemAtURL:copy error:nil];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (e) { igdToast([NSString stringWithFormat:@"فشل: %@", e]); return; }
+                UIAlertController *a = [UIAlertController alertControllerWithTitle:@"الصوت جاهز ✓"
+                    message:@"الحين سجّل فويس عادي في المحادثة: اضغط مطوّلاً على المايك وأرسل (يفضّل تثبّت التسجيل لين تقارب مدة الصوت). أول فويس ترسله يتبدّل بصوت الفيديو."
+                    preferredStyle:UIAlertControllerStyleAlert];
+                [a addAction:[UIAlertAction actionWithTitle:@"تمام" style:UIAlertActionStyleDefault handler:nil]];
+                [igdTopVC() presentViewController:a animated:YES completion:nil];
+            });
+        });
+    }];
+}
+@end
+static IGToolsPicker *gPicker;
+
+static void pickVideoForVoice(void) {
+    PHPickerConfiguration *c = [[PHPickerConfiguration alloc] init];
+    c.filter = [PHPickerFilter videosFilter];
+    c.selectionLimit = 1;
+    PHPickerViewController *p = [[PHPickerViewController alloc] initWithConfiguration:c];
+    gPicker = [IGToolsPicker new];
+    p.delegate = gPicker;
+    [igdTopVC() presentViewController:p animated:YES completion:nil];
+}
+
+static void showVoiceReport(void) {
+    UIAlertController *a = [UIAlertController alertControllerWithTitle:@"تقرير الفويس"
+        message:gVoiceLog.length ? gVoiceLog : @"(ما صار شي بعد)" preferredStyle:UIAlertControllerStyleAlert];
+    [a addAction:[UIAlertAction actionWithTitle:@"مشاركة" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[gVoiceLog ?: @""] applicationActivities:nil];
+        UIViewController *t = igdTopVC(); vc.popoverPresentationController.sourceView = t.view;
+        [t presentViewController:vc animated:YES completion:nil];
+    }]];
+    [a addAction:[UIAlertAction actionWithTitle:@"إغلاق" style:UIAlertActionStyleCancel handler:nil]];
+    [igdTopVC() presentViewController:a animated:YES completion:nil];
+}
+
+static void openRepeat(UIViewController *thread);
 static void openTools(UIViewController *thread) {
-    if (!raOn(@"tools.repeat")) { igdToast(@"أدوات المحادثة مطفية من Ra Menu"); return; }
+    UIAlertController *m = [UIAlertController alertControllerWithTitle:@"أدوات المحادثة" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [m addAction:[UIAlertAction actionWithTitle:@"إرسال رسالة متكررة" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        if (!raOn(@"tools.repeat")) { igdToast(@"مطفي من Ra Menu"); return; }
+        openRepeat(thread);
+    }]];
+    [m addAction:[UIAlertAction actionWithTitle:(gPendingOgg ? @"فيديو ← فويس (يوجد صوت جاهز، اختر غيره)" : @"فيديو ← فويس") style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        if (!raOn(@"tools.voice")) { igdToast(@"مطفي من Ra Menu"); return; }
+        pickVideoForVoice();
+    }]];
+    if (gPendingOgg) [m addAction:[UIAlertAction actionWithTitle:@"إلغاء الصوت الجاهز" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *x) { gPendingOgg = nil; igdToast(@"تم الإلغاء"); }]];
+    [m addAction:[UIAlertAction actionWithTitle:@"تقرير الفويس" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) { showVoiceReport(); }]];
+    [m addAction:[UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil]];
+    m.popoverPresentationController.sourceView = thread.view;
+    [igdTopVC() presentViewController:m animated:YES completion:nil];
+}
+
+static void openRepeat(UIViewController *thread) {
     UIViewController *top = igdTopVC();
     if (gRunning) {
         UIAlertController *a = [UIAlertController alertControllerWithTitle:@"الإرسال شغّال" message:nil preferredStyle:UIAlertControllerStyleAlert];
@@ -120,6 +393,11 @@ static void openTools(UIViewController *thread) {
 
 __attribute__((constructor)) static void init(void) {
     raRegister(@"أدوات المحادثة", @"tools.repeat", @"إرسال رسالة متكررة", @"اضغط مطوّلاً على زر العين داخل المحادثة");
+    raRegister(@"أدوات المحادثة", @"tools.voice", @"تحويل فيديو إلى فويس", @"تجريبي: يبدّل صوت الفويس اللي تسجّله بصوت الفيديو");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        hookRecorder();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ if (!objc_getClass("OggOpusVoiceMessageRecorder")) vlog(@"OggOpusVoiceMessageRecorder class not found"); });
+    });
     [NSNotificationCenter.defaultCenter addObserverForName:@"ra.chattools" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
         if ([n.object isKindOfClass:[UIViewController class]]) openTools(n.object);
     }];
