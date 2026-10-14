@@ -14,7 +14,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r7-ufi"
+#define IGD_BUILD @"r8-fixed"
 
 #pragma mark - Runtime helpers
 
@@ -546,7 +546,7 @@ static void IGDEnsureButton(void) {
     if (!w) return;
     if (!gButton) {
         gButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        gButton.frame = CGRectMake(12, w.bounds.size.height * 0.45, 52, 52);
+        gButton.bounds = CGRectMake(0, 0, 52, 52);
         gButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55];
         gButton.layer.cornerRadius = 26;
         gButton.layer.borderWidth = 1;
@@ -554,9 +554,9 @@ static void IGDEnsureButton(void) {
         gButton.tintColor = UIColor.whiteColor;
         [gButton setImage:[UIImage systemImageNamed:@"arrow.down.to.line"] forState:UIControlStateNormal];
         [gButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) { IGDTap(); }] forControlEvents:UIControlEventTouchUpInside];
-        [gButton addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:[IGDHandler shared] action:@selector(pan:)]];
         [gButton addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:[IGDHandler shared] action:@selector(hold:)]];
     }
+    gButton.center = CGPointMake(w.bounds.size.width * 0.91, w.bounds.size.height * 0.355);   // fixed, above the like button
     if (gButton.superview != w) [w addSubview:gButton];
     else if (w.subviews.lastObject != gButton) [w bringSubviewToFront:gButton];
 }

@@ -1,6 +1,6 @@
 // IGSeen: read DMs without sending "seen". An eye button in the chat header sends "seen" manually.
 #import "igd_common.h"
-#define BUILD @"s2"
+#define BUILD @"s3"
 
 static BOOL gAllow = NO;                 // YES only while the eye button is sending "seen"
 static __weak UIViewController *gThread; // chat currently on screen
@@ -33,67 +33,41 @@ static UIViewController *findListVC(UIViewController *vc, int depth) {
     return nil;
 }
 
-static void collectCallButtons(UIView *v, UIWindow *w, NSMutableArray<NSValue *> *out, int depth) {
-    if (depth > 12 || v.hidden || v.alpha < 0.05) return;
-    CGRect r = [v convertRect:v.bounds toView:w];
-    if (v != gEye && CGRectGetMinY(r) < w.safeAreaInsets.top + 80 && r.size.width < 90 && r.size.height < 90 && r.size.width > 14) {
-        NSString *lab = [(v.accessibilityLabel ?: @"") lowercaseString];
-        NSString *ident = [(v.accessibilityIdentifier ?: @"") lowercaseString];
-        NSString *all = [lab stringByAppendingString:ident];
-        if ([all containsString:@"call"] || [all containsString:@"video"] || [all containsString:@"audio"] ||
-            [all containsString:@"مكالم"] || [all containsString:@"اتصال"] || [all containsString:@"فيديو"] || [all containsString:@"صوت"])
-            [out addObject:[NSValue valueWithCGRect:r]];
-    }
-    for (UIView *s in v.subviews) collectCallButtons(s, w, out, depth + 1);
-}
-
 // ---- eye button ------------------------------------------------------------
+static void styleEye(BOOL sent);
 static void sendSeen(void) {
     UIViewController *list = findListVC(gThread, 0);
     SEL sel = sel_registerName("markLastMessageAsSeen");
     if (!list || ![list respondsToSelector:sel]) { igdToast(@"IGSeen: ما لقيت قائمة الرسائل"); return; }
     gAllow = YES;
     ((void (*)(id, SEL))objc_msgSend)(list, sel);
-    UIImage *on = [UIImage systemImageNamed:@"eye.fill"];
-    [gEye setImage:on forState:UIControlStateNormal];
-    gEye.tintColor = UIColor.systemGreenColor;
+    styleEye(YES);
     igdToast(@"تم إرسال Seen");
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        gAllow = NO;
-        [gEye setImage:[UIImage systemImageNamed:@"eye.slash"] forState:UIControlStateNormal];
-        gEye.tintColor = UIColor.labelColor;
-    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ gAllow = NO; });
+}
+
+static void styleEye(BOOL sent) {
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:19 weight:UIImageSymbolWeightSemibold];
+    [gEye setImage:[UIImage systemImageNamed:(sent ? @"eye.fill" : @"eye.slash") withConfiguration:cfg] forState:UIControlStateNormal];
+    gEye.tintColor = sent ? UIColor.systemGreenColor : UIColor.whiteColor;
 }
 
 static void placeEye(void) {
     UIWindow *w = igdKeyWindow();
-    if (!raOn(@"seen.dm")) { gEye.hidden = YES; return; }
-    if (!gThread || !w || !gThread.viewIfLoaded.window) { gEye.hidden = YES; return; }
+    if (!raOn(@"seen.dm") || !gThread || !w || !gThread.viewIfLoaded.window) { gEye.hidden = YES; return; }
     if (!gEye) {
-        gEye = [UIButton buttonWithType:UIButtonTypeSystem];
-        gEye.bounds = CGRectMake(0, 0, 38, 38);
-        gEye.tintColor = UIColor.labelColor;
+        gEye = [UIButton buttonWithType:UIButtonTypeCustom];
+        gEye.bounds = CGRectMake(0, 0, 40, 40);
+        gEye.layer.cornerRadius = 20;
+        gEye.backgroundColor = [UIColor colorWithWhite:0 alpha:0.35];
         gEye.accessibilityIdentifier = @"igseen.eye";
-        [gEye setImage:[UIImage systemImageNamed:@"eye.slash"] forState:UIControlStateNormal];
+        styleEye(NO);
         [gEye addAction:[UIAction actionWithHandler:^(UIAction *a) { sendSeen(); }] forControlEvents:UIControlEventTouchUpInside];
     }
     if (gEye.superview != w) [w addSubview:gEye];
     [w bringSubviewToFront:gEye];
-    NSMutableArray *rects = [NSMutableArray new];
-    collectCallButtons(w, w, rects, 0);
-    CGFloat top = w.safeAreaInsets.top + 22, x;
-    if (rects.count) {
-        CGFloat minX = CGFLOAT_MAX, maxX = 0, midY = 0;
-        for (NSValue *v in rects) {
-            CGRect r = v.CGRectValue;
-            minX = MIN(minX, CGRectGetMinX(r)); maxX = MAX(maxX, CGRectGetMaxX(r)); midY += CGRectGetMidY(r);
-        }
-        top = midY / rects.count;
-        x = (minX > 60) ? minX - 24 : maxX + 24;     // next to the call buttons, on the free side
-    } else {
-        x = 90;                                       // fallback: top-left corner
-    }
-    gEye.center = CGPointMake(x, top);
+    // fixed spot in the chat header (left of the call icons), same row as the back button
+    gEye.center = CGPointMake(w.bounds.size.width * 0.5625, w.safeAreaInsets.top + 22);
     gEye.hidden = NO;
 }
 
@@ -106,12 +80,12 @@ static void schedulePlace(void) {
 static void hookThreadVC(void) {
     const char *C = "IGDirectThreadViewController";
     igdHook(C, "viewDidAppear:", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
-        return ^(id self, BOOL a) { ((void (*)(id, SEL, BOOL))orig)(self, s, a); gThread = self; schedulePlace(); };
+        return ^(id self, BOOL a) { ((void (*)(id, SEL, BOOL))orig)(self, s, a); gThread = self; styleEye(NO); schedulePlace(); };
     });
     igdHook(C, "viewDidDisappear:", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
         return ^(id self, BOOL a) {
             ((void (*)(id, SEL, BOOL))orig)(self, s, a);
-            if (gThread == self) { gThread = nil; gEye.hidden = YES; }
+            if (gThread == self) { gThread = nil; gEye.hidden = YES; styleEye(NO); }
         };
     });
     igdHook(C, "updateThreadNavigationBar", ^id(IMP orig, SEL s, char ret, unsigned nargs) {
