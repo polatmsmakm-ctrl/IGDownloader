@@ -39,19 +39,19 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
 1 warning generated.
 OK RaTweak
 OK RaTweakLite (no chat tools)
-total 6016
-drwxr-xr-x  15 runner  staff     480 Oct 14 20:06 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 20:06 ..
--rw-r--r--   1 runner  staff    1627 Oct 14 20:06 build.log
--rwxr-xr-x   1 runner  staff  268384 Oct 14 20:06 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  313152 Oct 14 20:06 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  267872 Oct 14 20:06 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  268864 Oct 14 20:06 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  267904 Oct 14 20:06 IGLock.dylib
--rwxr-xr-x   1 runner  staff  267488 Oct 14 20:06 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  269728 Oct 14 20:06 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  317440 Oct 14 20:06 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 20:06 obj
-drwxr-xr-x  10 runner  staff     320 Oct 14 20:06 obj_lite
--rwxr-xr-x   1 runner  staff  439216 Oct 14 20:06 RaTweak.dylib
--rwxr-xr-x   1 runner  staff  375488 Oct 14 20:06 RaTweakLite.dylib
+total 6432
+drwxr-xr-x  15 runner  staff     480 Oct 14 20:15 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 20:14 ..
+-rw-r--r--   1 runner  staff    1627 Oct 14 20:15 build.log
+-rwxr-xr-x   1 runner  staff  287008 Oct 14 20:14 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  331024 Oct 14 20:14 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  286480 Oct 14 20:14 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287376 Oct 14 20:14 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 14 20:14 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286144 Oct 14 20:14 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288144 Oct 14 20:14 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335856 Oct 14 20:14 IGTools.dylib
+drwxr-xr-x  11 runner  staff     352 Oct 14 20:15 obj
+drwxr-xr-x  10 runner  staff     320 Oct 14 20:15 obj_lite
+-rwxr-xr-x   1 runner  staff  474672 Oct 14 20:15 RaTweak.dylib
+-rwxr-xr-x   1 runner  staff  410832 Oct 14 20:15 RaTweakLite.dylib
