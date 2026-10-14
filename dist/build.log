@@ -24,19 +24,7 @@ OK IGSeen
 == IGExtras ==
 OK IGExtras
 == IGHQ ==
-src/IGHQ.m:28:15: error: pointer to non-const type 'NSString *' with no explicit ownership
-   28 |     NSString **sym = (NSString **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
-      |               ^
-src/IGHQ.m:28:33: error: pointer to non-const type 'NSString *' with no explicit ownership
-   28 |     NSString **sym = (NSString **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
-      |                                 ^
-src/IGHQ.m:41:103: error: passing 'void (void)' to parameter of incompatible type 'dispatch_block_t _Nonnull' (aka 'void (^)(void)')
-   41 |         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), forceFlag);
-      |                                                                                                       ^~~~~~~~~
-/Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk/usr/include/dispatch/queue.h:1279:20: note: passing argument to parameter 'block' here
- 1279 |                 dispatch_block_t block);
-      |                                  ^
-3 errors generated.
+OK IGHQ
 == IGTools ==
 OK IGTools
 == RaTweak (all-in-one) ==
@@ -51,29 +39,22 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
 1 warning generated.
-src/IGHQ.m:28:15: error: pointer to non-const type 'NSString *' with no explicit ownership
-   28 |     NSString **sym = (NSString **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
-      |               ^
-src/IGHQ.m:28:33: error: pointer to non-const type 'NSString *' with no explicit ownership
-   28 |     NSString **sym = (NSString **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
-      |                                 ^
-src/IGHQ.m:41:103: error: passing 'void (void)' to parameter of incompatible type 'dispatch_block_t _Nonnull' (aka 'void (^)(void)')
-   41 |         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), dispatch_get_main_queue(), forceFlag);
-      |                                                                                                       ^~~~~~~~~
-/Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.5.sdk/usr/include/dispatch/queue.h:1279:20: note: passing argument to parameter 'block' here
- 1279 |                 dispatch_block_t block);
-      |                                  ^
-3 errors generated.
-total 4752
-drwxr-xr-x  12 runner  staff     384 Oct 14 20:47 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 20:47 ..
--rw-r--r--   1 runner  staff    3800 Oct 14 20:47 build.log
--rwxr-xr-x   1 runner  staff  287008 Oct 14 20:47 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  354544 Oct 14 20:47 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  286480 Oct 14 20:47 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  287376 Oct 14 20:47 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  286688 Oct 14 20:47 IGLock.dylib
--rwxr-xr-x   1 runner  staff  286144 Oct 14 20:47 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  288256 Oct 14 20:47 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  335952 Oct 14 20:47 IGTools.dylib
-drwxr-xr-x   9 runner  staff     288 Oct 14 20:47 obj
+OK RaTweak
+OK RaTweakLite (no chat tools)
+total 7176
+drwxr-xr-x  16 runner  staff     512 Oct 14 20:48 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 20:48 ..
+-rw-r--r--   1 runner  staff    1646 Oct 14 20:48 build.log
+-rwxr-xr-x   1 runner  staff  287008 Oct 14 20:48 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  354544 Oct 14 20:48 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  286480 Oct 14 20:48 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287376 Oct 14 20:48 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  285904 Oct 14 20:48 IGHQ.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 14 20:48 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286144 Oct 14 20:48 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288256 Oct 14 20:48 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335952 Oct 14 20:48 IGTools.dylib
+drwxr-xr-x  12 runner  staff     384 Oct 14 20:48 obj
+drwxr-xr-x  11 runner  staff     352 Oct 14 20:48 obj_lite
+-rwxr-xr-x   1 runner  staff  515584 Oct 14 20:48 RaTweak.dylib
+-rwxr-xr-x   1 runner  staff  435808 Oct 14 20:48 RaTweakLite.dylib
