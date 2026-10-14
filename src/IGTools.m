@@ -109,6 +109,8 @@ static void vlog(NSString *fmt, ...) {
     NSLog(@"[IGTools voice] %@", m);
 }
 
+static void startPolling(void);
+
 // ---- Ogg container -------------------------------------------------------------------
 static uint32_t oggCRC(const uint8_t *d, size_t n) {
     static uint32_t T[256]; static dispatch_once_t o;
