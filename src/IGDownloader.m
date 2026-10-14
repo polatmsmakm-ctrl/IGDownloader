@@ -6,6 +6,7 @@
 // Instagram's own data model:  on-screen view -> IGMedia -> [media video] -> URLs.
 // No hooks / no Substrate: plain Objective-C runtime + a floating button.
 
+#import "ra_menu.h"
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <Photos/Photos.h>
@@ -539,6 +540,8 @@ static void IGDTap(void) {
 
 static void IGDEnsureButton(void) {
     IGDInstallHooks();
+    if (!raOn(@"dl")) { gButton.hidden = YES; return; }
+    gButton.hidden = NO;
     UIWindow *w = IGDKeyWindow();
     if (!w) return;
     if (!gButton) {
@@ -560,6 +563,7 @@ static void IGDEnsureButton(void) {
 
 __attribute__((constructor)) static void IGDInit(void) {
     NSLog(@"[IGDownloader] %@ loaded", IGD_BUILD);
+    raRegister(@"التحميل", @"dl", @"زر التحميل العائم", @"تحميل فيديوهات الريلز والستوري");
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer *t) { IGDEnsureButton(); }];
     });

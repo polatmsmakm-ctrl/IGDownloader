@@ -1,6 +1,7 @@
 // IGLock: Face ID / passcode lock for the app. Blurs the app switcher too.
 #import <UIKit/UIKit.h>
 #import <LocalAuthentication/LocalAuthentication.h>
+#import "ra_menu.h"
 #define BUILD @"l1"
 #define GRACE_SECONDS 15.0
 
@@ -49,6 +50,7 @@ static void authenticate(void);
 @end
 
 static void showCover(void) {
+    if (!raOn(@"lock")) return;
     if (gCover) { gCover.hidden = NO; return; }
     UIWindowScene *sc = scene();
     if (!sc) return;
@@ -87,12 +89,14 @@ __attribute__((constructor)) static void init(void) {
         gBackgroundedAt = [NSDate date];
     }];
     [nc addObserverForName:UIApplicationWillEnterForegroundNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
-        if (gBackgroundedAt && -[gBackgroundedAt timeIntervalSinceNow] > GRACE_SECONDS) gLocked = YES;
+        if (raOn(@"lock") && gBackgroundedAt && -[gBackgroundedAt timeIntervalSinceNow] > GRACE_SECONDS) gLocked = YES;
     }];
     [nc addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
         if (gAuthing) return;
+        if (!raOn(@"lock")) { hideCover(); return; }
         if (gLocked) { showCover(); authenticate(); }
         else hideCover();
     }];
+    raRegister(@"الأمان", @"lock", @"قفل التطبيق", @"بصمة الوجه أو الرمز عند الفتح");
     NSLog(@"[IGLock %@] loaded", BUILD);
 }

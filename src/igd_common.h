@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
+#import "ra_menu.h"
 
 #define IGD_UNUSED __attribute__((unused))
 

@@ -11,21 +11,24 @@ static void igdConfirm(NSString *msg, void (^go)(void)) {
     });
 }
 
-static void confirmHook(const char *cls, const char *sel, NSString *msg) {
+static void confirmHook(const char *cls, const char *sel, NSString *key, NSString *msg) {
     igdHook(cls, sel, ^id(IMP orig, SEL s, char ret, unsigned nargs) {
         if (ret != 'v') return nil;
-        if (nargs == 0) return ^(id self) { igdConfirm(msg, ^{ ((void (*)(id, SEL))orig)(self, s); }); };
-        if (nargs == 1) return ^(id self, id a) { igdConfirm(msg, ^{ ((void (*)(id, SEL, id))orig)(self, s, a); }); };
+        if (nargs == 0) return ^(id self) { if (!raOn(key)) { ((void (*)(id, SEL))orig)(self, s); return; } igdConfirm(msg, ^{ ((void (*)(id, SEL))orig)(self, s); }); };
+        if (nargs == 1) return ^(id self, id a) { if (!raOn(key)) { ((void (*)(id, SEL, id))orig)(self, s, a); return; } igdConfirm(msg, ^{ ((void (*)(id, SEL, id))orig)(self, s, a); }); };
         return nil;
     });
 }
 
 __attribute__((constructor)) static void init(void) {
+    raRegister(@"تأكيد قبل التنفيذ", @"cf.call", @"تأكيد الاتصال", @"سؤال قبل المكالمة الصوتية أو الفيديو");
+    raRegister(@"تأكيد قبل التنفيذ", @"cf.follow", @"تأكيد المتابعة", @"سؤال قبل متابعة حساب");
+    raRegister(@"تأكيد قبل التنفيذ", @"cf.repost", @"تأكيد إعادة النشر", @"سؤال قبل الريبوست");
     igdRun(@"IGConfirm", BUILD, ^{
-        confirmHook("IGDirectThreadCallButtonsCoordinator", "_didTapAudioButton:", @"تبي تتصل صوتي؟");
-        confirmHook("IGDirectThreadCallButtonsCoordinator", "_didTapVideoButton:", @"تبي تتصل فيديو؟");
-        confirmHook("IGFollowController", "_didPressFollowButton", @"تبي تتابع هذا الحساب؟");
-        confirmHook("IGSundialViewerVerticalUFI", "_didTapRepostButton", @"تبي تعيد نشر الريل؟");
-        confirmHook("IGUFIInteractionCountsView", "_onRepostButtonPressed:", @"تبي تعيد نشر المنشور؟");
+        confirmHook("IGDirectThreadCallButtonsCoordinator", "_didTapAudioButton:", @"cf.call", @"تبي تتصل صوتي؟");
+        confirmHook("IGDirectThreadCallButtonsCoordinator", "_didTapVideoButton:", @"cf.call", @"تبي تتصل فيديو؟");
+        confirmHook("IGFollowController", "_didPressFollowButton", @"cf.follow", @"تبي تتابع هذا الحساب؟");
+        confirmHook("IGSundialViewerVerticalUFI", "_didTapRepostButton", @"cf.repost", @"تبي تعيد نشر الريل؟");
+        confirmHook("IGUFIInteractionCountsView", "_onRepostButtonPressed:", @"cf.repost", @"تبي تعيد نشر المنشور؟");
     });
 }

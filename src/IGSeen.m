@@ -1,6 +1,6 @@
 // IGSeen: read DMs without sending "seen". An eye button in the chat header sends "seen" manually.
 #import "igd_common.h"
-#define BUILD @"s1"
+#define BUILD @"s2"
 
 static BOOL gAllow = NO;                 // YES only while the eye button is sending "seen"
 static __weak UIViewController *gThread; // chat currently on screen
@@ -10,15 +10,15 @@ static UIButton *gEye;
 static void gateBool(const char *cls, const char *sel) {
     igdHook(cls, sel, ^id(IMP orig, SEL s, char ret, unsigned nargs) {
         if (ret != 'B' && ret != 'c') return nil;
-        if (nargs == 0) return ^BOOL(id self) { return gAllow ? ((BOOL (*)(id, SEL))orig)(self, s) : NO; };
-        if (nargs == 1) return ^BOOL(id self, id a) { return gAllow ? ((BOOL (*)(id, SEL, id))orig)(self, s, a) : NO; };
+        if (nargs == 0) return ^BOOL(id self) { return (gAllow || !raOn(@"seen.dm")) ? ((BOOL (*)(id, SEL))orig)(self, s) : NO; };
+        if (nargs == 1) return ^BOOL(id self, id a) { return (gAllow || !raOn(@"seen.dm")) ? ((BOOL (*)(id, SEL, id))orig)(self, s, a) : NO; };
         return nil;
     });
 }
 static void gateVoid(const char *cls, const char *sel) {
     igdHook(cls, sel, ^id(IMP orig, SEL s, char ret, unsigned nargs) {
         if (ret != 'v' || nargs != 0) return nil;
-        return ^(id self) { if (gAllow) ((void (*)(id, SEL))orig)(self, s); };
+        return ^(id self) { if (gAllow || !raOn(@"seen.dm")) ((void (*)(id, SEL))orig)(self, s); };
     });
 }
 
@@ -67,6 +67,7 @@ static void sendSeen(void) {
 
 static void placeEye(void) {
     UIWindow *w = igdKeyWindow();
+    if (!raOn(@"seen.dm")) { gEye.hidden = YES; return; }
     if (!gThread || !w || !gThread.viewIfLoaded.window) { gEye.hidden = YES; return; }
     if (!gEye) {
         gEye = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -120,6 +121,7 @@ static void hookThreadVC(void) {
 }
 
 __attribute__((constructor)) static void init(void) {
+    raRegister(@"الرسائل", @"seen.dm", @"إخفاء Seen في الرسائل", @"تقرأ بدون ما يطلع seen، وزر العين يرسله يدوياً. أطفيه إذا تبي seen عادي");
     igdRun(@"IGSeen", BUILD, ^{
         const char *LIST = "_TtC33IGDirectMessageListViewController33IGDirectMessageListViewController";
         gateBool("IGDirectThreadViewListAdapterDataSource", "shouldUpdateLastSeenMessage");
