@@ -341,6 +341,7 @@ static int ra_open(const char *path, int oflag, ...) {
     mode_t mode = 0;
     if (oflag & O_CREAT) { va_list ap; va_start(ap, oflag); mode = (mode_t)va_arg(ap, int); va_end(ap); }
     int fd = open(path, oflag, mode);
+    if (!gPendingOgg) return fd;      // fast path: nothing armed, behave exactly like open() (no locks, no ObjC)
     if (fd >= 0 && (oflag & (O_WRONLY | O_RDWR)) && (oflag & (O_CREAT | O_TRUNC))) {
         noteWrite(path);
         if (gPendingOgg && !inSwap() && replacementFor(path)) fdRemember(fd, path);
@@ -349,6 +350,7 @@ static int ra_open(const char *path, int oflag, ...) {
 }
 static FILE *ra_fopen(const char *path, const char *mode) {
     FILE *f = fopen(path, mode);
+    if (!gPendingOgg) return f;
     if (f && mode && (strchr(mode, 'w') || strchr(mode, 'a'))) noteWrite(path);
     return f;
 }
