@@ -1,183 +1,51 @@
 == IGDownloader ==
-In file included from src/IGDownloader.m:9:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
 src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
       |                        ^
 src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
-3 warnings generated.
+2 warnings generated.
 OK IGDownloader
 == IGConfirm ==
-In file included from src/IGConfirm.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
 OK IGConfirm
 == IGGhost ==
-In file included from src/IGGhost.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
 src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
-2 warnings generated.
+1 warning generated.
 OK IGGhost
 == IGNoAds ==
-In file included from src/IGNoAds.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
 OK IGNoAds
 == IGLock ==
-In file included from src/IGLock.m:4:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
 OK IGLock
 == IGSeen ==
-In file included from src/IGSeen.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
 OK IGSeen
 == IGExtras ==
-In file included from src/IGExtras.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
 OK IGExtras
 == RaTweak (all-in-one) ==
-In file included from src/IGDownloader.m:9:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
 src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
       |                        ^
 src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
-3 warnings generated.
-In file included from src/IGConfirm.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
-In file included from src/IGGhost.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
+2 warnings generated.
 src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
-2 warnings generated.
-In file included from src/IGNoAds.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
-In file included from src/IGLock.m:4:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
-In file included from src/IGSeen.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
-1 warning generated.
-In file included from src/IGExtras.m:2:
-In file included from src/igd_common.h:5:
-src/ra_menu.h:94:90: warning: '&&' within '||' [-Wlogical-op-parentheses]
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |              ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/ra_menu.h:94:90: note: place parentheses around the '&&' expression to silence this warning
-   94 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
-      |                                                                                          ^                                                                                              
-      |                 (                                                                                                                                                                       )
 1 warning generated.
 OK RaTweak
-total 2064
-drwxr-xr-x  12 runner  staff     384 Oct 14 19:09 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 19:09 ..
--rw-r--r--   1 runner  staff   18917 Oct 14 19:09 build.log
--rwxr-xr-x   1 runner  staff  114224 Oct 14 19:09 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  143936 Oct 14 19:09 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  113744 Oct 14 19:09 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  115408 Oct 14 19:09 IGGhost.dylib
--rwxr-xr-x   1 runner  staff   97456 Oct 14 19:09 IGLock.dylib
--rwxr-xr-x   1 runner  staff   96832 Oct 14 19:09 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  115856 Oct 14 19:09 IGSeen.dylib
-drwxr-xr-x  10 runner  staff     320 Oct 14 19:09 obj
--rwxr-xr-x   1 runner  staff  222896 Oct 14 19:09 RaTweak.dylib
+total 4528
+drwxr-xr-x  12 runner  staff     384 Oct 14 19:14 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:14 ..
+-rw-r--r--   1 runner  staff    1571 Oct 14 19:14 build.log
+-rwxr-xr-x   1 runner  staff  268384 Oct 14 19:14 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  313152 Oct 14 19:14 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  267872 Oct 14 19:14 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  268864 Oct 14 19:14 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  267904 Oct 14 19:14 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  267488 Oct 14 19:14 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  269296 Oct 14 19:14 IGSeen.dylib
+drwxr-xr-x  10 runner  staff     320 Oct 14 19:14 obj
+-rwxr-xr-x   1 runner  staff  375120 Oct 14 19:14 RaTweak.dylib
