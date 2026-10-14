@@ -673,9 +673,9 @@ static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
 - (instancetype)init { if ((self = [super init])) _reps = [NSMutableArray new]; return self; }
 - (void)parser:(NSXMLParser *)p didStartElement:(NSString *)e namespaceURI:(NSString *)ns qualifiedName:(NSString *)q attributes:(NSDictionary *)a {
     if ([e isEqualToString:@"AdaptationSet"]) {
-        self.adType = (a[@"contentType"] ?: a[@"mimeType"] ?: @"").lowercaseString;
+        self.adType = ((NSString *)(a[@"contentType"] ?: a[@"mimeType"] ?: @"")).lowercaseString;
     } else if ([e isEqualToString:@"Representation"]) {
-        NSString *t = (a[@"mimeType"] ?: self.adType ?: @"").lowercaseString;
+        NSString *t = ((NSString *)(a[@"mimeType"] ?: self.adType ?: @"")).lowercaseString;
         self.cur = [@{@"bw": @([a[@"bandwidth"] longLongValue]), @"codecs": a[@"codecs"] ?: @"", @"video": @([t containsString:@"video"]), @"audio": @([t containsString:@"audio"]), @"h": @([a[@"height"] integerValue])} mutableCopy];
     } else if ([e isEqualToString:@"BaseURL"] && self.cur) self.text = [NSMutableString new];
 }
