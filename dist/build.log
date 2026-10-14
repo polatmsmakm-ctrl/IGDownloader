@@ -24,7 +24,10 @@ OK IGSeen
 == IGExtras ==
 OK IGExtras
 == IGTools ==
-OK IGTools
+src/IGTools.m:279:98: error: use of undeclared identifier 'gFdLock'
+  279 | __attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; gFdLock = [NSObject new]; }
+      |                                                                                                  ^~~~~~~
+1 error generated.
 == RaTweak (all-in-one) ==
 src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
@@ -37,18 +40,19 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
 1 warning generated.
-OK RaTweak
-total 5208
-drwxr-xr-x  13 runner  staff     416 Oct 14 19:50 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 19:50 ..
--rw-r--r--   1 runner  staff    1596 Oct 14 19:50 build.log
--rwxr-xr-x   1 runner  staff  268384 Oct 14 19:50 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  313152 Oct 14 19:50 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  267872 Oct 14 19:50 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  268864 Oct 14 19:50 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  267904 Oct 14 19:50 IGLock.dylib
--rwxr-xr-x   1 runner  staff  267488 Oct 14 19:50 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  269728 Oct 14 19:50 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  299200 Oct 14 19:50 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 19:50 obj
--rwxr-xr-x   1 runner  staff  421568 Oct 14 19:50 RaTweak.dylib
+src/IGTools.m:279:98: error: use of undeclared identifier 'gFdLock'
+  279 | __attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; gFdLock = [NSObject new]; }
+      |                                                                                                  ^~~~~~~
+1 error generated.
+total 3792
+drwxr-xr-x  11 runner  staff     352 Oct 14 19:56 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:55 ..
+-rw-r--r--   1 runner  staff    2240 Oct 14 19:56 build.log
+-rwxr-xr-x   1 runner  staff  268384 Oct 14 19:55 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  313152 Oct 14 19:55 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  267872 Oct 14 19:56 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  268864 Oct 14 19:55 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  267904 Oct 14 19:55 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  267488 Oct 14 19:55 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  269728 Oct 14 19:55 IGSeen.dylib
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:56 obj
