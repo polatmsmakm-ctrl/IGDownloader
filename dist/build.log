@@ -42,19 +42,19 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
 OK RaTweak
 OK RaTweakLite (no chat tools)
 total 7176
-drwxr-xr-x  16 runner  staff     512 Oct 14 20:48 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 20:48 ..
--rw-r--r--   1 runner  staff    1646 Oct 14 20:48 build.log
--rwxr-xr-x   1 runner  staff  287008 Oct 14 20:48 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  354544 Oct 14 20:48 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  286480 Oct 14 20:48 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  287376 Oct 14 20:48 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  285904 Oct 14 20:48 IGHQ.dylib
--rwxr-xr-x   1 runner  staff  286688 Oct 14 20:48 IGLock.dylib
--rwxr-xr-x   1 runner  staff  286144 Oct 14 20:48 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  288256 Oct 14 20:48 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  335952 Oct 14 20:48 IGTools.dylib
-drwxr-xr-x  12 runner  staff     384 Oct 14 20:48 obj
-drwxr-xr-x  11 runner  staff     352 Oct 14 20:48 obj_lite
--rwxr-xr-x   1 runner  staff  515584 Oct 14 20:48 RaTweak.dylib
--rwxr-xr-x   1 runner  staff  435808 Oct 14 20:48 RaTweakLite.dylib
+drwxr-xr-x  16 runner  staff     512 Oct 14 21:34 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 21:34 ..
+-rw-r--r--   1 runner  staff    1646 Oct 14 21:34 build.log
+-rwxr-xr-x   1 runner  staff  287008 Oct 14 21:34 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  354544 Oct 14 21:34 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  286480 Oct 14 21:34 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287376 Oct 14 21:34 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  285904 Oct 14 21:34 IGHQ.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 14 21:34 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286144 Oct 14 21:34 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288256 Oct 14 21:34 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335952 Oct 14 21:34 IGTools.dylib
+drwxr-xr-x  12 runner  staff     384 Oct 14 21:34 obj
+drwxr-xr-x  11 runner  staff     352 Oct 14 21:34 obj_lite
+-rwxr-xr-x   1 runner  staff  515584 Oct 14 21:34 RaTweak.dylib
+-rwxr-xr-x   1 runner  staff  435808 Oct 14 21:34 RaTweakLite.dylib
