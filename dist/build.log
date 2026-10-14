@@ -24,7 +24,16 @@ OK IGSeen
 == IGExtras ==
 OK IGExtras
 == IGTools ==
-OK IGTools
+src/IGTools.m:243:102: error: call to undeclared function 'startPolling'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  243 |         dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
+      |                                                                                                      ^
+src/IGTools.m:316:13: error: static declaration of 'startPolling' follows non-static declaration
+  316 | static void startPolling(void) {
+      |             ^
+src/IGTools.m:243:102: note: previous implicit declaration is here
+  243 |         dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
+      |                                                                                                      ^
+2 errors generated.
 == RaTweak (all-in-one) ==
 src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
@@ -37,18 +46,25 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
 1 warning generated.
-OK RaTweak
-total 5168
-drwxr-xr-x  13 runner  staff     416 Oct 14 19:25 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 19:25 ..
--rw-r--r--   1 runner  staff    1596 Oct 14 19:25 build.log
--rwxr-xr-x   1 runner  staff  268384 Oct 14 19:25 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  313152 Oct 14 19:25 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  267872 Oct 14 19:25 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  268864 Oct 14 19:25 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  267904 Oct 14 19:25 IGLock.dylib
--rwxr-xr-x   1 runner  staff  267488 Oct 14 19:25 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  269728 Oct 14 19:25 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  296032 Oct 14 19:25 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 19:25 obj
--rwxr-xr-x   1 runner  staff  402528 Oct 14 19:25 RaTweak.dylib
+src/IGTools.m:243:102: error: call to undeclared function 'startPolling'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  243 |         dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
+      |                                                                                                      ^
+src/IGTools.m:316:13: error: static declaration of 'startPolling' follows non-static declaration
+  316 | static void startPolling(void) {
+      |             ^
+src/IGTools.m:243:102: note: previous implicit declaration is here
+  243 |         dispatch_async(dispatch_get_main_queue(), ^{ gPendingOgg = path; gPendingAt = [NSDate date]; startPolling(); done(nil); });
+      |                                                                                                      ^
+2 errors generated.
+total 3792
+drwxr-xr-x  11 runner  staff     352 Oct 14 19:34 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:34 ..
+-rw-r--r--   1 runner  staff    3416 Oct 14 19:34 build.log
+-rwxr-xr-x   1 runner  staff  268384 Oct 14 19:34 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  313152 Oct 14 19:34 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  267872 Oct 14 19:34 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  268864 Oct 14 19:34 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  267904 Oct 14 19:34 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  267488 Oct 14 19:34 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  269728 Oct 14 19:34 IGSeen.dylib
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:34 obj
