@@ -8,7 +8,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <PhotosUI/PhotosUI.h>
-#define BUILD @"t6"
+#define BUILD @"t7"
 
 static BOOL gRunning, gStop;
 
@@ -274,13 +274,14 @@ static BOOL looksOgg(NSString *path) {
 }
 
 // ---- see which files Instagram's recorder really writes (dyld interposing of open/fopen) -----------
+static __thread BOOL tInSwap;   // our own write must not trigger another swap (that recursed until the stack overflowed)
 static NSMutableArray<NSString *> *gHits;     // paths opened for writing while a voice is pending
 static NSObject *gHitLock, *gFdLock;
 __attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; gFdLock = [NSObject new]; }
 static int gHitLogBudget = 40;
 
 static void noteWrite(const char *path) {
-    if (!gPendingOgg || !path) return;
+    if (!gPendingOgg || !path || tInSwap) return;
     static const char *skip[] = {"IGCache", ".sql", "-wal", "-shm", ".log", "FFLogger", "/dev/", ".db", "/Caches/com.apple", "NSURLCache", "fsCachedData"};
     for (unsigned i = 0; i < sizeof skip / sizeof *skip; i++) if (strstr(path, skip[i])) return;
     if (strstr(path, "ra-voice-")) return;
@@ -309,7 +310,7 @@ static void fdRemember(int fd, const char *path) {
 }
 static int ra_close(int fd) {
     char path[512] = {0};
-    if (gPendingOgg && fd > 2) {
+    if (gPendingOgg && fd > 2 && !tInSwap) {
         @synchronized (gFdLock) {
             for (int i = 0; i < 16; i++) if (gFds[i].fd == fd) { strlcpy(path, gFds[i].path, sizeof path); gFds[i].fd = 0; break; }
         }
@@ -318,8 +319,12 @@ static int ra_close(int fd) {
     if (path[0]) {
         NSData *repl = replacementFor(path);
         if (repl.length) {
+            tInSwap = YES;
             BOOL ok = [repl writeToFile:[NSString stringWithUTF8String:path] atomically:NO];   // recorder just finished writing: replace now
+            tInSwap = NO;
+            tInSwap = YES;
             vlog(@"close-swap: %@ (%lu bytes) ok=%d", [[NSString stringWithUTF8String:path] lastPathComponent], (unsigned long)repl.length, ok);
+            tInSwap = NO;
         }
     }
     return r;
@@ -330,7 +335,7 @@ static int ra_open(const char *path, int oflag, ...) {
     int fd = open(path, oflag, mode);
     if (fd >= 0 && (oflag & (O_WRONLY | O_RDWR)) && (oflag & (O_CREAT | O_TRUNC))) {
         noteWrite(path);
-        if (gPendingOgg && replacementFor(path)) fdRemember(fd, path);
+        if (gPendingOgg && !tInSwap && replacementFor(path)) fdRemember(fd, path);
     }
     return fd;
 }
@@ -394,7 +399,9 @@ static void pollTrySwap(NSString *p) {
     NSDate *prev = gTracked[p];
     gTracked[p] = mt;
     if (prev && [prev isEqualToDate:mt]) {            // unchanged for one tick: recording finished
+        tInSwap = YES;
         BOOL ok = [repl writeToFile:p atomically:NO];
+        tInSwap = NO;
         [gDone addObject:key];
         NSDictionary *at2 = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
         if (at2.fileModificationDate) [gDone addObject:[NSString stringWithFormat:@"%@|%.3f", p, at2.fileModificationDate.timeIntervalSince1970]];
