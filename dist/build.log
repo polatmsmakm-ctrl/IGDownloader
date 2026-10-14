@@ -24,7 +24,19 @@ OK IGSeen
 == IGExtras ==
 OK IGExtras
 == IGTools ==
-OK IGTools
+Undefined symbols for architecture arm64:
+  "_CMBlockBufferGetDataPointer", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools-4eb46c.o
+  "_CMSampleBufferGetDataBuffer", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools-4eb46c.o
+  "_CMTimeMakeWithSeconds", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools-4eb46c.o
+  "_CMTimeRangeMake", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools-4eb46c.o
+  "_kCMTimeZero", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools-4eb46c.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
 == RaTweak (all-in-one) ==
 src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
@@ -37,18 +49,28 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
     6 | static void silence(const char *cls, const char *sel, NSString *key) {
       |             ^~~~~~~
 1 warning generated.
-OK RaTweak
-total 5096
-drwxr-xr-x  13 runner  staff     416 Oct 14 19:19 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 19:19 ..
--rw-r--r--   1 runner  staff    1596 Oct 14 19:19 build.log
--rwxr-xr-x   1 runner  staff  268384 Oct 14 19:19 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  313152 Oct 14 19:19 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  267872 Oct 14 19:19 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  268864 Oct 14 19:19 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  267904 Oct 14 19:19 IGLock.dylib
--rwxr-xr-x   1 runner  staff  267488 Oct 14 19:19 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  269728 Oct 14 19:19 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  269936 Oct 14 19:19 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 19:19 obj
--rwxr-xr-x   1 runner  staff  394816 Oct 14 19:19 RaTweak.dylib
+Undefined symbols for architecture arm64:
+  "_CMBlockBufferGetDataPointer", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools.o
+  "_CMSampleBufferGetDataBuffer", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools.o
+  "_CMTimeMakeWithSeconds", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools.o
+  "_CMTimeRangeMake", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools.o
+  "_kCMTimeZero", referenced from:
+      ___convertVideoToOgg_block_invoke in IGTools.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+total 3792
+drwxr-xr-x  11 runner  staff     352 Oct 14 19:24 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 19:24 ..
+-rw-r--r--   1 runner  staff    2919 Oct 14 19:24 build.log
+-rwxr-xr-x   1 runner  staff  268384 Oct 14 19:24 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  313152 Oct 14 19:24 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  267872 Oct 14 19:24 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  268864 Oct 14 19:24 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  267904 Oct 14 19:24 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  267488 Oct 14 19:24 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  269728 Oct 14 19:24 IGSeen.dylib
+drwxr-xr-x  11 runner  staff     352 Oct 14 19:24 obj
