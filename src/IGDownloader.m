@@ -531,20 +531,67 @@ static void IGDShowReport(NSString *rep) {
 
 #pragma mark - Download + save
 
-static void IGDSaveToPhotos(NSURL *file) {
-    void (^save)(void) = ^{
+static NSString *gTag;   // "username-yyyyMMdd-HHmmss" for the file about to be saved
+
+static NSString *IGDMakeTag(id media) {
+    NSString *u = nil;
+    id user = IGDSend(media, "user");
+    id n = user ? IGDSend(user, "username") : nil;
+    if ([n isKindOfClass:[NSString class]]) u = n;
+    if (!u) { id v = IGDSend(media, "video"); id o = v ? IGDIvarByName(v, "_ownerUsername") : nil; if ([o isKindOfClass:[NSString class]]) u = o; }
+    NSDateFormatter *f = [NSDateFormatter new];
+    f.dateFormat = @"yyyyMMdd-HHmmss";
+    f.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    return [NSString stringWithFormat:@"%@-%@", u.length ? u : @"instagram", [f stringFromDate:[NSDate date]]];
+}
+
+static NSUInteger gTagSeq;
+
+// Saves a file to Photos with a readable name and, if enabled, inside a "Ra" album.
+static void IGDSaveAsset(NSURL *file, BOOL video) {
+    NSString *ext = file.pathExtension.length ? file.pathExtension : (video ? @"mp4" : @"jpg");
+    NSString *name = gTag ? [NSString stringWithFormat:@"%@%@.%@", gTag, (++gTagSeq > 1 ? [NSString stringWithFormat:@"-%lu", (unsigned long)gTagSeq] : @""), ext] : file.lastPathComponent;
+    BOOL album = raOn(@"dl.album");
+    void (^plain)(void) = ^{
         [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-            [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:file];
+            if (video) [PHAssetChangeRequest creationRequestForAssetFromVideoAtFileURL:file];
+            else [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:file];
         } completionHandler:^(BOOL ok, NSError *err) {
             [[NSFileManager defaultManager] removeItemAtURL:file error:nil];
             IGDToast(ok ? @"Saved to Photos ✓" : [NSString stringWithFormat:@"Save failed: %@", err.localizedDescription]);
         }];
     };
-    [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus st) {
-        if (st == PHAuthorizationStatusAuthorized || st == PHAuthorizationStatusLimited) save();
+    void (^named)(void) = ^{
+        __block PHObjectPlaceholder *ph = nil;
+        PHFetchOptions *fo = [PHFetchOptions new];
+        fo.predicate = [NSPredicate predicateWithFormat:@"title = %@", @"Ra"];
+        PHAssetCollection *coll = [PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAlbumRegular options:fo].firstObject;
+        [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+            PHAssetCreationRequest *r = [PHAssetCreationRequest creationRequestForAsset];
+            PHAssetResourceCreationOptions *o = [PHAssetResourceCreationOptions new];
+            o.originalFilename = name;
+            o.shouldMoveFile = NO;
+            [r addResourceWithType:(video ? PHAssetResourceTypeVideo : PHAssetResourceTypePhoto) fileURL:file options:o];
+            ph = r.placeholderForCreatedAsset;
+            if (coll) {
+                [[PHAssetCollectionChangeRequest changeRequestForAssetCollection:coll] addAssets:@[ph]];
+            } else {
+                [[PHAssetCollectionChangeRequest creationRequestForAssetCollectionWithTitle:@"Ra"] addAssets:@[ph]];
+            }
+        } completionHandler:^(BOOL ok, NSError *err) {
+            if (!ok) { NSLog(@"[IGD] album save failed: %@ → plain", err); plain(); return; }
+            [[NSFileManager defaultManager] removeItemAtURL:file error:nil];
+            IGDToast(@"تم الحفظ في ألبوم Ra ✓");
+        }];
+    };
+    PHAccessLevel lvl = album ? PHAccessLevelReadWrite : PHAccessLevelAddOnly;
+    [PHPhotoLibrary requestAuthorizationForAccessLevel:lvl handler:^(PHAuthorizationStatus st) {
+        if (st == PHAuthorizationStatusAuthorized || st == PHAuthorizationStatusLimited) { if (album) named(); else plain(); }
         else IGDToast(@"Allow Photos access in Settings");
     }];
 }
+
+static void IGDSaveToPhotos(NSURL *file) { IGDSaveAsset(file, YES); }
 
 static NSString *gLastFail;
 static int gMode;   // 0 = save video to Photos, 1 = export audio only
@@ -556,15 +603,7 @@ static void IGDSaveImage(NSURL *u) {
         if (err || !d || ![UIImage imageWithData:d]) { IGDToast(@"تعذّر تحميل الصورة"); return; }
         NSURL *dst = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"IGD-%u.jpg", arc4random()]]];
         [d writeToURL:dst atomically:YES];
-        [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelAddOnly handler:^(PHAuthorizationStatus st) {
-            if (st != PHAuthorizationStatusAuthorized && st != PHAuthorizationStatusLimited) { IGDToast(@"Allow Photos access in Settings"); return; }
-            [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-                [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:dst];
-            } completionHandler:^(BOOL ok, NSError *e) {
-                [[NSFileManager defaultManager] removeItemAtURL:dst error:nil];
-                IGDToast(ok ? @"تم حفظ الصورة ✓" : @"فشل حفظ الصورة");
-            }];
-        }];
+        IGDSaveAsset(dst, NO);
     }] resume];
 }
 
@@ -622,6 +661,117 @@ static void IGDDownloadFrom(NSArray<NSURL *> *urls, NSUInteger idx) {
     [t resume];
 }
 
+#pragma mark - DASH (higher quality)
+
+@interface IGDMPD : NSObject <NSXMLParserDelegate>
+@property NSMutableArray<NSMutableDictionary *> *reps;
+@property NSString *adType;
+@property NSMutableDictionary *cur;
+@property NSMutableString *text;
+@end
+@implementation IGDMPD
+- (instancetype)init { if ((self = [super init])) _reps = [NSMutableArray new]; return self; }
+- (void)parser:(NSXMLParser *)p didStartElement:(NSString *)e namespaceURI:(NSString *)ns qualifiedName:(NSString *)q attributes:(NSDictionary *)a {
+    if ([e isEqualToString:@"AdaptationSet"]) {
+        self.adType = (a[@"contentType"] ?: a[@"mimeType"] ?: @"").lowercaseString;
+    } else if ([e isEqualToString:@"Representation"]) {
+        NSString *t = (a[@"mimeType"] ?: self.adType ?: @"").lowercaseString;
+        self.cur = [@{@"bw": @([a[@"bandwidth"] longLongValue]), @"codecs": a[@"codecs"] ?: @"", @"video": @([t containsString:@"video"]), @"audio": @([t containsString:@"audio"]), @"h": @([a[@"height"] integerValue])} mutableCopy];
+    } else if ([e isEqualToString:@"BaseURL"] && self.cur) self.text = [NSMutableString new];
+}
+- (void)parser:(NSXMLParser *)p foundCharacters:(NSString *)s { [self.text appendString:s]; }
+- (void)parser:(NSXMLParser *)p didEndElement:(NSString *)e namespaceURI:(NSString *)ns qualifiedName:(NSString *)q {
+    if ([e isEqualToString:@"BaseURL"] && self.cur && self.text) { self.cur[@"url"] = [self.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]; self.text = nil; }
+    else if ([e isEqualToString:@"Representation"] && self.cur) { if (self.cur[@"url"]) [self.reps addObject:self.cur]; self.cur = nil; }
+}
+@end
+
+static NSURL *IGDFetchSync(NSURL *u, NSString **why) {
+    __block NSURL *out = nil; __block NSString *w = nil;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+    NSURLSessionConfiguration *cfg = NSURLSessionConfiguration.defaultSessionConfiguration;
+    cfg.timeoutIntervalForRequest = 60;
+    [[[NSURLSession sessionWithConfiguration:cfg] downloadTaskWithURL:u completionHandler:^(NSURL *loc, NSURLResponse *r, NSError *e) {
+        NSInteger code = [r isKindOfClass:[NSHTTPURLResponse class]] ? ((NSHTTPURLResponse *)r).statusCode : 0;
+        if (e || !loc || code >= 400) { w = e ? e.localizedDescription : [NSString stringWithFormat:@"HTTP %ld", (long)code]; }
+        else {
+            NSURL *dst = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"IGDd-%u.mp4", arc4random()]]];
+            [[NSFileManager defaultManager] moveItemAtURL:loc toURL:dst error:nil];
+            out = dst;
+        }
+        dispatch_semaphore_signal(sem);
+    }] resume];
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+    if (why) *why = w;
+    return out;
+}
+
+// Tries the DASH manifest (separate best video + best audio, merged). Returns NO if not possible.
+static BOOL IGDTryDash(id media, void (^fallback)(void)) {
+    id video = IGDSend(media, "video") ?: IGDSend(media, "rawVideo");
+    NSData *mpd = video ? IGDIvarByName(video, "_dashManifestData") : nil;
+    if (![mpd isKindOfClass:[NSData class]] || mpd.length < 50) return NO;
+    NSXMLParser *xp = [[NSXMLParser alloc] initWithData:mpd];
+    IGDMPD *d = [IGDMPD new];
+    xp.delegate = d;
+    if (![xp parse]) return NO;
+    NSDictionary *bv = nil, *ba = nil;
+    for (NSDictionary *r in d.reps) {
+        NSString *c = [r[@"codecs"] lowercaseString];
+        if ([r[@"video"] boolValue]) {
+            if (![c hasPrefix:@"avc"] && ![c hasPrefix:@"hvc"] && ![c hasPrefix:@"hev"] && c.length) continue;   // skip VP9/AV1
+            if (!bv || [r[@"bw"] longLongValue] > [bv[@"bw"] longLongValue]) bv = r;
+        } else if ([r[@"audio"] boolValue]) {
+            if (!ba || [r[@"bw"] longLongValue] > [ba[@"bw"] longLongValue]) ba = r;
+        }
+    }
+    NSURL *vu = bv ? [NSURL URLWithString:bv[@"url"]] : nil;
+    NSURL *au = ba ? [NSURL URLWithString:ba[@"url"]] : nil;
+    if (!vu || ![vu.scheme hasPrefix:@"http"]) return NO;
+    IGDToast([NSString stringWithFormat:@"تحميل بأعلى جودة (%@p)…", bv[@"h"] ?: @"?"]);
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSString *why = nil;
+        NSURL *vf = IGDFetchSync(vu, &why);
+        NSURL *af = (au && [au.scheme hasPrefix:@"http"]) ? IGDFetchSync(au, nil) : nil;
+        if (!vf) { gLastFail = [@"dash video: " stringByAppendingString:why ?: @"?"]; dispatch_async(dispatch_get_main_queue(), fallback); return; }
+        if (!af) { if (gMode == 1) { IGDExportAudio(vf); return; } IGDSaveToPhotos(vf); return; }
+        AVURLAsset *va = [AVURLAsset assetWithURL:vf], *aa = [AVURLAsset assetWithURL:af];
+        AVAssetTrack *vt = [va tracksWithMediaType:AVMediaTypeVideo].firstObject;
+        AVAssetTrack *at = [aa tracksWithMediaType:AVMediaTypeAudio].firstObject;
+        if (!vt) { gLastFail = @"dash: no video track"; dispatch_async(dispatch_get_main_queue(), fallback); return; }
+        AVMutableComposition *comp = [AVMutableComposition composition];
+        NSError *err = nil;
+        AVMutableCompositionTrack *ct = [comp addMutableTrackWithMediaType:AVMediaTypeVideo preferredTrackID:kCMPersistentTrackID_Invalid];
+        [ct insertTimeRange:CMTimeRangeMake(kCMTimeZero, va.duration) ofTrack:vt atTime:kCMTimeZero error:&err];
+        ct.preferredTransform = vt.preferredTransform;
+        if (at) {
+            AVMutableCompositionTrack *cta = [comp addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
+            CMTime dur = CMTimeMinimum(va.duration, aa.duration);
+            [cta insertTimeRange:CMTimeRangeMake(kCMTimeZero, dur) ofTrack:at atTime:kCMTimeZero error:nil];
+        }
+        NSURL *out = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"IGDm-%u.mp4", arc4random()]]];
+        AVAssetExportSession *ex = [[AVAssetExportSession alloc] initWithAsset:comp presetName:AVAssetExportPresetPassthrough];
+        ex.outputURL = out; ex.outputFileType = AVFileTypeMPEG4; ex.shouldOptimizeForNetworkUse = YES;
+        [ex exportAsynchronouslyWithCompletionHandler:^{
+            [[NSFileManager defaultManager] removeItemAtURL:vf error:nil];
+            [[NSFileManager defaultManager] removeItemAtURL:af error:nil];
+            if (ex.status != AVAssetExportSessionStatusCompleted || err) {
+                gLastFail = [NSString stringWithFormat:@"dash merge: %@", ex.error.localizedDescription ?: err.localizedDescription ?: @"?"];
+                dispatch_async(dispatch_get_main_queue(), fallback);
+                return;
+            }
+            if (gMode == 1) IGDExportAudio(out); else IGDSaveToPhotos(out);
+        }];
+    });
+    return YES;
+}
+
+static void IGDDownloadVideo(id media, NSArray<NSURL *> *urls) {
+    void (^fb)(void) = ^{ IGDDownloadFrom(urls, 0); };
+    if (raOn(@"dl.hq") && IGDTryDash(media, fb)) return;
+    fb();
+}
+
 static void IGDTap(void) {
     gMode = 0;
     NSMutableString *rep = [NSMutableString new];
@@ -633,11 +783,12 @@ static void IGDTap(void) {
     }
     NSArray *kids = IGDChildren(media);
     NSArray *targets = kids ?: @[media];
+    gTag = IGDMakeTag(media); gTagSeq = 0;
     int nv = 0, np = 0, bad = 0;
     for (id t in targets) {
         if (IGDSend(t, "video") || IGDSend(t, "rawVideo")) {
             NSArray *urls = IGDURLsForMedia(t, rep);
-            if (urls.count) { nv++; IGDDownloadFrom(urls, 0); } else bad++;
+            if (urls.count) { nv++; IGDDownloadVideo(t, urls); } else bad++;
         } else {
             NSURL *u = IGDBestPhotoURL(t);
             if (u) { np++; [rep appendFormat:@"photo: %@\n", IGDShort(u)]; IGDSaveImage(u); } else bad++;
@@ -754,6 +905,8 @@ static void IGDEnsureButton(void) {
 __attribute__((constructor)) static void IGDInit(void) {
     NSLog(@"[IGDownloader] %@ loaded", IGD_BUILD);
     raRegister(@"التحميل", @"dl", @"زر التحميل العائم", @"فيديو أو صورة أو كل صور الكاروسيل. اضغط مطوّلاً للصوت فقط ونسخ الكابشن");
+    raRegister(@"التحميل", @"dl.hq", @"تحميل بأعلى جودة", @"يدمج أفضل فيديو وصوت من DASH، وإذا فشل يرجع للتحميل العادي");
+    raRegister(@"التحميل", @"dl.album", @"حفظ في ألبوم Ra وباسم الحساب", @"اسم الملف: الحساب-التاريخ، ويُحفظ داخل ألبوم Ra في الصور");
     raRegisterD(@"التحميل", @"dl.photos", @"إظهار الزر على الصور أيضاً", @"افتراضياً يظهر مع الفيديو فقط", NO);
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer *t) { IGDEnsureButton(); }];

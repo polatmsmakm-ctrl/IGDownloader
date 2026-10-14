@@ -540,6 +540,9 @@ static void showVoiceReport(void) {
 static void openRepeat(UIViewController *thread);
 static void openTools(UIViewController *thread) {
     UIAlertController *m = [UIAlertController alertControllerWithTitle:@"أدوات المحادثة" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    [m addAction:[UIAlertAction actionWithTitle:@"علّم كمقروء الآن" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
+        [NSNotificationCenter.defaultCenter postNotificationName:@"ra.markread" object:nil];
+    }]];
     [m addAction:[UIAlertAction actionWithTitle:@"إرسال رسالة متكررة" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
         if (!raOn(@"tools.repeat")) { igdToast(@"مطفي من Ra Menu"); return; }
         openRepeat(thread);

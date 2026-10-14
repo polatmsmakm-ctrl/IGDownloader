@@ -108,6 +108,7 @@ static void hookThreadVC(void) {
 
 __attribute__((constructor)) static void init(void) {
     raRegister(@"الرسائل", @"seen.dm", @"إخفاء Seen في الرسائل", @"تقرأ بدون ما يطلع seen، وزر العين يرسله يدوياً. أطفيه إذا تبي seen عادي");
+    [NSNotificationCenter.defaultCenter addObserverForName:@"ra.markread" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) { sendSeen(); }];
     igdRun(@"IGSeen", BUILD, ^{
         const char *LIST = "_TtC33IGDirectMessageListViewController33IGDirectMessageListViewController";
         gateBool("IGDirectThreadViewListAdapterDataSource", "shouldUpdateLastSeenMessage");
