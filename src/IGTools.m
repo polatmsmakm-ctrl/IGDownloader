@@ -1,10 +1,14 @@
 // IGTools: chat tools opened by long-pressing the eye button in a chat.
 //   • send the same message N times in a row (with a delay between sends)
 #import "igd_common.h"
+#import <fcntl.h>
+#import <stdarg.h>
+#import <stdio.h>
+#import <string.h>
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <PhotosUI/PhotosUI.h>
-#define BUILD @"t4"
+#define BUILD @"t5"
 
 static BOOL gRunning, gStop;
 
@@ -253,6 +257,42 @@ static BOOL looksOgg(NSString *path) {
     NSData *d = [h readDataOfLength:4]; [h closeFile];
     return d.length == 4 && memcmp(d.bytes, "OggS", 4) == 0;
 }
+
+// ---- see which files Instagram's recorder really writes (dyld interposing of open/fopen) -----------
+static NSMutableArray<NSString *> *gHits;     // paths opened for writing while a voice is pending
+static NSObject *gHitLock;
+__attribute__((constructor(101))) static void ra_hitlock_init(void) { gHitLock = [NSObject new]; }
+static int gHitLogBudget = 40;
+
+static void noteWrite(const char *path) {
+    if (!gPendingOgg || !path) return;
+    static const char *skip[] = {"IGCache", ".sql", "-wal", "-shm", ".log", "FFLogger", "/dev/", ".db", "/Caches/com.apple", "NSURLCache", "fsCachedData"};
+    for (unsigned i = 0; i < sizeof skip / sizeof *skip; i++) if (strstr(path, skip[i])) return;
+    if (strstr(path, "ra-voice-")) return;
+    NSString *p = [NSString stringWithUTF8String:path];
+    @synchronized (gHitLock) {
+        if (!gHits) gHits = [NSMutableArray new];
+        if ([gHits containsObject:p] || gHits.count > 200) return;
+        [gHits addObject:p];
+        if (gHitLogBudget-- > 0) vlog(@"write-open: %@", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"]);
+    }
+}
+static int ra_open(const char *path, int oflag, ...) {
+    mode_t mode = 0;
+    if (oflag & O_CREAT) { va_list ap; va_start(ap, oflag); mode = (mode_t)va_arg(ap, int); va_end(ap); }
+    int fd = open(path, oflag, mode);
+    if (fd >= 0 && (oflag & (O_WRONLY | O_RDWR)) && (oflag & (O_CREAT | O_TRUNC))) noteWrite(path);
+    return fd;
+}
+static FILE *ra_fopen(const char *path, const char *mode) {
+    FILE *f = fopen(path, mode);
+    if (f && mode && (strchr(mode, 'w') || strchr(mode, 'a'))) noteWrite(path);
+    return f;
+}
+#define RA_INTERPOSE(_r, _o) __attribute__((used)) static struct { const void *r; const void *o; } _ra_i_##_o __attribute__((section("__DATA,__interpose"))) = { (const void *)(unsigned long)&_r, (const void *)(unsigned long)&_o }
+RA_INTERPOSE(ra_open, open);
+RA_INTERPOSE(ra_fopen, fopen);
+
 static int swapInDir(NSString *dir, NSData *repl, int depth) {
     int n = 0;
     NSArray *items = [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil];
@@ -320,17 +360,17 @@ static void pollScan(NSString *dir, int depth, NSData *repl) {
         if ([at.fileType isEqualToString:NSFileTypeDirectory]) { if (depth < 3) pollScan(p, depth + 1, repl); continue; }
         if (at.fileSize == 0 || [p isEqualToString:gPendingOgg]) continue;
         BOOL ogg = [@[@"ogg", @"opus", @"oga"] containsObject:p.pathExtension.lowercaseString] || looksOgg(p);
-        if (![gLogged containsObject:p] && gLogBudget > 0) {
-            [gLogged addObject:p]; gLogBudget--;
-            vlog(@"new file: %@ (%llu bytes, ogg=%d)", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"], at.fileSize, ogg);
+        if (ogg && !gTracked[p]) {
+            gTracked[p] = mt;
+            vlog(@"ogg file found: %@ (%llu bytes)", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"], at.fileSize);
         }
-        if (ogg && !gTracked[p]) gTracked[p] = mt;
     }
 }
 
 static void startPolling(void) {
     if (gPoll) dispatch_source_cancel(gPoll);
     gTracked = [NSMutableDictionary new]; gLogged = [NSMutableSet new]; gDone = [NSMutableSet new]; gLogBudget = 12;
+    @synchronized (gHitLock) { [gHits removeAllObjects]; gHitLogBudget = 40; }
     NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
     NSString *home = NSHomeDirectory();
     NSArray *roots = @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"],
@@ -341,6 +381,13 @@ static void startPolling(void) {
     dispatch_source_set_event_handler(t, ^{
         if (!gPendingOgg || -[gPendingAt timeIntervalSinceNow] > 600 || !repl.length) { dispatch_source_cancel(t); return; }
         @autoreleasepool {
+            NSArray *hits; @synchronized (gHitLock) { hits = [gHits copy]; }
+            for (NSString *h in hits) {                                           // files Instagram opened for writing
+                if (!gTracked[h] && ([@[@"ogg", @"opus", @"oga"] containsObject:h.pathExtension.lowercaseString] || looksOgg(h))) {
+                    gTracked[h] = [NSDate dateWithTimeIntervalSince1970:0];
+                    vlog(@"tracking recorder file: %@", [h stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"]);
+                }
+            }
             for (NSString *p in [gTracked.allKeys copy]) pollTrySwap(p, repl);   // watch the files we already know about
             for (NSString *r in roots) pollScan(r, 0, repl);                      // and look for new ones
         }
@@ -409,7 +456,7 @@ static void pickVideoForVoice(void) {
 
 static void showVoiceReport(void) {
     UIAlertController *a = [UIAlertController alertControllerWithTitle:@"تقرير الفويس"
-        message:gVoiceLog.length ? gVoiceLog : @"(ما صار شي بعد)" preferredStyle:UIAlertControllerStyleAlert];
+        message:[NSString stringWithFormat:@"%@\n%@", [[igdStatus() filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF CONTAINS 'Ogg'"]] componentsJoinedByString:@"\n"], gVoiceLog.length ? gVoiceLog : @"(ما صار شي بعد)"] preferredStyle:UIAlertControllerStyleAlert];
     [a addAction:[UIAlertAction actionWithTitle:@"مشاركة" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
         UIActivityViewController *vc = [[UIActivityViewController alloc] initWithActivityItems:@[gVoiceLog ?: @""] applicationActivities:nil];
         UIViewController *t = igdTopVC(); vc.popoverPresentationController.sourceView = t.view;
