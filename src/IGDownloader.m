@@ -13,7 +13,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r5-model"
+#define IGD_BUILD @"r6-model"
 
 #pragma mark - Runtime helpers
 
@@ -76,28 +76,47 @@ static id IGDAnyObjIvar(id o, Ivar iv) {
     if (r) return r;
     const char *t = ivar_getTypeEncoding(iv);
     const char *nm = ivar_getName(iv);
-    if ((!t || !t[0]) && nm && (!strcmp(nm, "_viewModel") || !strcmp(nm, "_media") || !strcmp(nm, "_allVideoURLs")))
-        return IGDRawObjIvar(o, iv);
+    if ((!t || !t[0]) && nm) {
+        static const char *ok[] = {"_viewModel", "_media", "_allVideoURLs", "_mediaItem", "_item", "_model",
+                                   "_video", "_feedItem", "_sundialItem", "_post", "_mediaViewModel"};
+        for (size_t i = 0; i < sizeof ok / sizeof ok[0]; i++)
+            if (!strcmp(nm, ok[i])) return IGDRawObjIvar(o, iv);
+    }
     return nil;
 }
 
 #pragma mark - Finding the IGMedia on screen
 
+static NSInteger gBudget;
+static NSMutableDictionary *gHolderAreas;
+
+static BOOL IGDIsMedia(id o) {
+    if (!o) return NO;
+    for (Class c = object_getClass(o); c; c = class_getSuperclass(c)) {
+        NSString *n = NSStringFromClass(c);
+        if ([n isEqualToString:@"IGMedia"] || [n hasSuffix:@".IGMedia"]) return YES;
+    }
+    return NO;
+}
+
+static BOOL IGDIsUI(id o) {
+    return [o isKindOfClass:[UIResponder class]] || [o isKindOfClass:[CALayer class]];
+}
+
 static id IGDMediaFromHolder(id h, int depth, NSHashTable *seen) {
     if (!h || depth < 0 || [seen containsObject:h]) return nil;
     [seen addObject:h];
-    Class mediaCls = NSClassFromString(@"IGMedia");
-    if (!mediaCls) return nil;
-    if ([h isKindOfClass:mediaCls]) return h;
+    if (IGDIsMedia(h)) return h;
     id viaSel = IGDSend(h, "media");
-    if (viaSel && [viaSel isKindOfClass:mediaCls]) return viaSel;
+    if (IGDIsMedia(viaSel)) return viaSel;
     if (!IGDInterestingClass(object_getClass(h))) return nil;
     for (NSValue *v in IGDIvars(object_getClass(h))) {
+        if (--gBudget < 0) return nil;
         Ivar iv = [v pointerValue];
         id o = IGDAnyObjIvar(h, iv);
         if (!o) continue;
-        if ([o isKindOfClass:mediaCls]) return o;
-        if (depth > 0 && IGDInterestingClass(object_getClass(o))) {
+        if (IGDIsMedia(o)) return o;
+        if (depth > 0 && !IGDIsUI(o) && IGDInterestingClass(object_getClass(o))) {
             id r = IGDMediaFromHolder(o, depth - 1, seen);
             if (r) return r;
         }
@@ -114,12 +133,16 @@ static void IGDWalk(UIView *v, NSMutableArray *cands, int *count) {
     CGRect r = CGRectIntersection([v convertRect:v.bounds toView:nil], v.window.bounds);
     if (CGRectIsNull(r) || r.size.width * r.size.height < 2000) return;
     double area = r.size.width * r.size.height;
-    id media = IGDMediaFromHolder(v, 2, IGDNewSeen());
     NSString *holder = NSStringFromClass(object_getClass(v));
+    if (IGDInterestingClass(object_getClass(v))) {
+        double old = [gHolderAreas[holder] doubleValue];
+        if (area > old) gHolderAreas[holder] = @(area);
+    }
+    id media = IGDMediaFromHolder(v, 3, IGDNewSeen());
     if (!media) {
         id nr = v.nextResponder;
         if ([nr isKindOfClass:[UIViewController class]] && ((UIViewController *)nr).view == v) {
-            media = IGDMediaFromHolder(nr, 2, IGDNewSeen());
+            media = IGDMediaFromHolder(nr, 3, IGDNewSeen());
             holder = NSStringFromClass(object_getClass(nr));
         }
     }
@@ -142,9 +165,42 @@ static UIWindow *IGDKeyWindow(void) {
     return IGDWindows().firstObject;
 }
 
+static void IGDDumpNoMedia(NSMutableString *rep) {
+    unsigned n = 0;
+    Class *all = objc_copyClassList(&n);
+    NSMutableArray *m = [NSMutableArray new], *vid = [NSMutableArray new];
+    for (unsigned i = 0; i < n; i++) {
+        const char *nm = class_getName(all[i]);
+        if (strstr(nm, "IGMedia") && m.count < 14) [m addObject:[NSString stringWithUTF8String:nm]];
+        if (strstr(nm, "IGVideo") && vid.count < 10) [vid addObject:[NSString stringWithUTF8String:nm]];
+    }
+    free(all);
+    [rep appendFormat:@"NSClassFromString(IGMedia): %@\nclasses with IGMedia: %@\nclasses with IGVideo: %@\n",
+     NSClassFromString(@"IGMedia") ? @"found" : @"NIL", [m componentsJoinedByString:@", "], [vid componentsJoinedByString:@", "]];
+    NSArray *top = [[gHolderAreas allKeys] sortedArrayUsingComparator:^NSComparisonResult(NSString *a, NSString *b) {
+        return [gHolderAreas[b] compare:gHolderAreas[a]];
+    }];
+    int shown = 0;
+    for (NSString *cn in top) {
+        if (shown++ >= 10) break;
+        Class c = NSClassFromString(cn);
+        if (!c) continue;
+        NSMutableArray *iv = [NSMutableArray new];
+        for (NSValue *v in IGDIvars(c)) {
+            if (iv.count >= 28) break;
+            Ivar x = [v pointerValue];
+            const char *t = ivar_getTypeEncoding(x);
+            [iv addObject:[NSString stringWithFormat:@"%s:%.22s", ivar_getName(x) ?: "?", (t && t[0]) ? t : "-"]];
+        }
+        [rep appendFormat:@"\n[%@ area %.0f]\n%@\n", cn, [gHolderAreas[cn] doubleValue], [iv componentsJoinedByString:@"  "]];
+    }
+}
+
 static id IGDFindCurrentMedia(NSMutableString *rep) {
     NSMutableArray *cands = [NSMutableArray new];
     int count = 0;
+    gBudget = 400000;
+    gHolderAreas = [NSMutableDictionary new];
     for (UIWindow *w in IGDWindows()) IGDWalk(w, cands, &count);
     [rep appendFormat:@"views scanned: %d | media candidates: %lu\n", count, (unsigned long)cands.count];
     NSDictionary *best = nil;
@@ -155,6 +211,7 @@ static id IGDFindCurrentMedia(NSMutableString *rep) {
         [rep appendFormat:@"best holder: %@ (visible area %.0f)\nmedia class: %@\n",
          best[@"holder"], [best[@"area"] doubleValue], NSStringFromClass(object_getClass(best[@"media"]))];
     }
+    if (!best) IGDDumpNoMedia(rep);
     return best[@"media"];
 }
 
