@@ -5,8 +5,13 @@ src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-
 src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
-2 warnings generated.
-OK IGDownloader
+src/IGDownloader.m:676:68: error: property 'lowercaseString' not found on object of type 'id _Null_unspecified'
+  676 |         self.adType = (a[@"contentType"] ?: a[@"mimeType"] ?: @"").lowercaseString;
+      |                                                                    ^
+src/IGDownloader.m:678:62: error: property 'lowercaseString' not found on object of type 'id _Null_unspecified'
+  678 |         NSString *t = (a[@"mimeType"] ?: self.adType ?: @"").lowercaseString;
+      |                                                              ^
+2 warnings and 2 errors generated.
 == IGConfirm ==
 OK IGConfirm
 == IGGhost ==
@@ -23,6 +28,8 @@ OK IGLock
 OK IGSeen
 == IGExtras ==
 OK IGExtras
+== IGHQ ==
+OK IGHQ
 == IGTools ==
 OK IGTools
 == RaTweak (all-in-one) ==
@@ -32,26 +39,23 @@ src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-
 src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
   468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
-2 warnings generated.
-src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
-    6 | static void silence(const char *cls, const char *sel, NSString *key) {
-      |             ^~~~~~~
-1 warning generated.
-OK RaTweak
-OK RaTweakLite (no chat tools)
-total 6432
-drwxr-xr-x  15 runner  staff     480 Oct 14 20:15 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 20:14 ..
--rw-r--r--   1 runner  staff    1627 Oct 14 20:15 build.log
--rwxr-xr-x   1 runner  staff  287008 Oct 14 20:14 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  331024 Oct 14 20:14 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  286480 Oct 14 20:14 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  287376 Oct 14 20:14 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  286688 Oct 14 20:14 IGLock.dylib
--rwxr-xr-x   1 runner  staff  286144 Oct 14 20:14 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  288144 Oct 14 20:14 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  335856 Oct 14 20:14 IGTools.dylib
-drwxr-xr-x  11 runner  staff     352 Oct 14 20:15 obj
-drwxr-xr-x  10 runner  staff     320 Oct 14 20:15 obj_lite
--rwxr-xr-x   1 runner  staff  474672 Oct 14 20:15 RaTweak.dylib
--rwxr-xr-x   1 runner  staff  410832 Oct 14 20:15 RaTweakLite.dylib
+src/IGDownloader.m:676:68: error: property 'lowercaseString' not found on object of type 'id _Null_unspecified'
+  676 |         self.adType = (a[@"contentType"] ?: a[@"mimeType"] ?: @"").lowercaseString;
+      |                                                                    ^
+src/IGDownloader.m:678:62: error: property 'lowercaseString' not found on object of type 'id _Null_unspecified'
+  678 |         NSString *t = (a[@"mimeType"] ?: self.adType ?: @"").lowercaseString;
+      |                                                              ^
+2 warnings and 2 errors generated.
+total 4616
+drwxr-xr-x  12 runner  staff     384 Oct 14 20:27 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 20:27 ..
+-rw-r--r--   1 runner  staff    2511 Oct 14 20:27 build.log
+-rwxr-xr-x   1 runner  staff  287008 Oct 14 20:27 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  286480 Oct 14 20:27 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287376 Oct 14 20:27 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  285776 Oct 14 20:27 IGHQ.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 14 20:27 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286144 Oct 14 20:27 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288256 Oct 14 20:27 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335952 Oct 14 20:27 IGTools.dylib
+drwxr-xr-x   2 runner  staff      64 Oct 14 20:27 obj
