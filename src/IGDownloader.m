@@ -14,7 +14,7 @@
 #import <objc/message.h>
 #import <malloc/malloc.h>
 
-#define IGD_BUILD @"r8-fixed"
+#define IGD_BUILD @"r9-icon"
 
 #pragma mark - Runtime helpers
 
@@ -538,6 +538,29 @@ static void IGDTap(void) {
 }
 @end
 
+// Find the like (heart) button in the visible Reels action column so the icon sits right above it.
+static BOOL IGDFindLike(UIView *v, UIWindow *w, CGRect *out, int depth) {
+    if (depth > 14 || v.hidden || v.alpha < 0.05) return NO;
+    NSString *lab = [[NSString stringWithFormat:@"%@%@", v.accessibilityLabel ?: @"", v.accessibilityIdentifier ?: @""] lowercaseString];
+    if (([lab containsString:@"like"] || [lab containsString:@"heart"] || [lab containsString:@"إعجاب"] || [lab containsString:@"اعجاب"]) && ![lab containsString:@"comment"]) {
+        CGRect r = [v convertRect:v.bounds toView:w];
+        if (r.size.width > 18 && r.size.width < 90 && r.size.height < 90 && CGRectGetMidX(r) > w.bounds.size.width * 0.7) { *out = r; return YES; }
+    }
+    for (UIView *sv in v.subviews) if (IGDFindLike(sv, w, out, depth + 1)) return YES;
+    return NO;
+}
+
+static CGPoint IGDButtonSpot(UIWindow *w) {
+    CGSize S = w.bounds.size;
+    CGPoint fallback = CGPointMake(S.width * 0.927, S.height * 0.555);   // measured from the reference screenshot
+    for (UIView *u in gUFIs.allObjects) {
+        if (![u isKindOfClass:[UIView class]] || !u.window) continue;
+        CGRect like;
+        if (IGDFindLike(u, w, &like, 0)) return CGPointMake(CGRectGetMidX(like), CGRectGetMinY(like) - 36);
+    }
+    return fallback;
+}
+
 static void IGDEnsureButton(void) {
     IGDInstallHooks();
     if (!raOn(@"dl")) { gButton.hidden = YES; return; }
@@ -546,17 +569,18 @@ static void IGDEnsureButton(void) {
     if (!w) return;
     if (!gButton) {
         gButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        gButton.bounds = CGRectMake(0, 0, 52, 52);
-        gButton.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55];
-        gButton.layer.cornerRadius = 26;
-        gButton.layer.borderWidth = 1;
-        gButton.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+        gButton.bounds = CGRectMake(0, 0, 44, 44);
         gButton.tintColor = UIColor.whiteColor;
-        [gButton setImage:[UIImage systemImageNamed:@"arrow.down.to.line"] forState:UIControlStateNormal];
+        gButton.layer.shadowColor = UIColor.blackColor.CGColor;     // keeps the bare icon readable on bright videos
+        gButton.layer.shadowOpacity = 0.45;
+        gButton.layer.shadowRadius = 2;
+        gButton.layer.shadowOffset = CGSizeZero;
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:23 weight:UIImageSymbolWeightSemibold];
+        [gButton setImage:[UIImage systemImageNamed:@"arrow.down.to.line" withConfiguration:cfg] forState:UIControlStateNormal];
         [gButton addAction:[UIAction actionWithHandler:^(__kindof UIAction *a) { IGDTap(); }] forControlEvents:UIControlEventTouchUpInside];
         [gButton addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:[IGDHandler shared] action:@selector(hold:)]];
     }
-    gButton.center = CGPointMake(w.bounds.size.width * 0.91, w.bounds.size.height * 0.355);   // fixed, above the like button
+    gButton.center = IGDButtonSpot(w);   // fixed, right above the like button
     if (gButton.superview != w) [w addSubview:gButton];
     else if (w.subviews.lastObject != gButton) [w bringSubviewToFront:gButton];
 }
