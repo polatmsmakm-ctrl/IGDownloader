@@ -31,7 +31,10 @@ src/ra_menu.h:90:90: note: place parentheses around the '&&' expression to silen
    90 |     if (!top || [NSStringFromClass(top.class) isEqualToString:@"UINavigationController"] && [((UINavigationController *)top).viewControllers.firstObject isKindOfClass:[RaMenuVC class]]) return;
       |                                                                                          ^                                                                                              
       |                 (                                                                                                                                                                       )
-1 warning generated.
+src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
+    6 | static void silence(const char *cls, const char *sel, NSString *key) {
+      |             ^~~~~~~
+2 warnings generated.
 OK IGGhost
 == IGNoAds ==
 In file included from src/IGNoAds.m:2:
@@ -68,13 +71,13 @@ src/ra_menu.h:90:90: note: place parentheses around the '&&' expression to silen
       |                 (                                                                                                                                                                       )
 1 warning generated.
 OK IGSeen
-total 1360
-drwxr-xr-x  9 runner  staff     288 Oct 14 18:33 .
-drwxr-xr-x  9 runner  staff     288 Oct 14 18:33 ..
--rw-r--r--  1 runner  staff    7617 Oct 14 18:33 build.log
--rwxr-xr-x  1 runner  staff  114256 Oct 14 18:33 IGConfirm.dylib
--rwxr-xr-x  1 runner  staff  140448 Oct 14 18:33 IGDownloader.dylib
--rwxr-xr-x  1 runner  staff  113888 Oct 14 18:33 IGGhost.dylib
--rwxr-xr-x  1 runner  staff   97456 Oct 14 18:33 IGLock.dylib
--rwxr-xr-x  1 runner  staff   96880 Oct 14 18:33 IGNoAds.dylib
--rwxr-xr-x  1 runner  staff  116464 Oct 14 18:33 IGSeen.dylib
+total 1368
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:44 .
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:44 ..
+-rw-r--r--  1 runner  staff    7800 Oct 14 18:44 build.log
+-rwxr-xr-x  1 runner  staff  114256 Oct 14 18:44 IGConfirm.dylib
+-rwxr-xr-x  1 runner  staff  140384 Oct 14 18:44 IGDownloader.dylib
+-rwxr-xr-x  1 runner  staff  115440 Oct 14 18:44 IGGhost.dylib
+-rwxr-xr-x  1 runner  staff   97456 Oct 14 18:44 IGLock.dylib
+-rwxr-xr-x  1 runner  staff   96880 Oct 14 18:44 IGNoAds.dylib
+-rwxr-xr-x  1 runner  staff  115888 Oct 14 18:44 IGSeen.dylib
