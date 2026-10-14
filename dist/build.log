@@ -8,12 +8,15 @@ OK IGGhost
 OK IGNoAds
 == IGLock ==
 OK IGLock
-total 984
-drwxr-xr-x  8 runner  staff     256 Oct 14 18:09 .
-drwxr-xr-x  9 runner  staff     288 Oct 14 18:09 ..
--rw-r--r--  1 runner  staff     137 Oct 14 18:09 build.log
--rwxr-xr-x  1 runner  staff   91536 Oct 14 18:09 IGConfirm.dylib
--rwxr-xr-x  1 runner  staff  118928 Oct 14 18:09 IGDownloader.dylib
--rwxr-xr-x  1 runner  staff   91120 Oct 14 18:09 IGGhost.dylib
--rwxr-xr-x  1 runner  staff   90832 Oct 14 18:09 IGLock.dylib
--rwxr-xr-x  1 runner  staff   90528 Oct 14 18:09 IGNoAds.dylib
+== IGSeen ==
+OK IGSeen
+total 1168
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:24 .
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:23 ..
+-rw-r--r--  1 runner  staff     160 Oct 14 18:24 build.log
+-rwxr-xr-x  1 runner  staff   91536 Oct 14 18:24 IGConfirm.dylib
+-rwxr-xr-x  1 runner  staff  118928 Oct 14 18:24 IGDownloader.dylib
+-rwxr-xr-x  1 runner  staff   91120 Oct 14 18:24 IGGhost.dylib
+-rwxr-xr-x  1 runner  staff   90832 Oct 14 18:24 IGLock.dylib
+-rwxr-xr-x  1 runner  staff   90528 Oct 14 18:24 IGNoAds.dylib
+-rwxr-xr-x  1 runner  staff   93968 Oct 14 18:24 IGSeen.dylib
