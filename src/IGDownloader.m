@@ -291,8 +291,22 @@ static id IGDFindCurrentMediaB(NSMutableString *rep, int budget) {
 static id IGDFindCurrentMedia(NSMutableString *rep) { return IGDFindCurrentMediaB(rep, 400000); }
 
 // Cheap check run once a second: should the button show? (a video is on screen; photos too if enabled)
+// Never poke around in the DM inbox / thread list: reading ivars and calling getters there can interfere with loading.
+static BOOL IGDInInbox(UIViewController *vc, int depth) {
+    if (!vc || depth > 4) return NO;
+    NSString *n = NSStringFromClass(object_getClass(vc));
+    if ([n containsString:@"Inbox"] || [n containsString:@"DirectThreadList"] || [n containsString:@"DirectTab"]) return YES;
+    for (UIViewController *c in vc.childViewControllers) if (IGDInInbox(c, depth + 1)) return YES;
+    UIViewController *sel = [vc isKindOfClass:[UITabBarController class]] ? ((UITabBarController *)vc).selectedViewController : nil;
+    if (sel && IGDInInbox(sel, depth + 1)) return YES;
+    if ([vc isKindOfClass:[UINavigationController class]]) return IGDInInbox(((UINavigationController *)vc).topViewController, depth + 1);
+    return NO;
+}
+
 static BOOL IGDVideoVisible(void) {
     static CFAbsoluteTime lastWalk; static BOOL cached;
+    UIWindow *kw = IGDKeyWindow();
+    if (kw && IGDInInbox(kw.rootViewController, 0)) return NO;
     NSMutableString *rep = [NSMutableString new];
     id m = nil;
     gBudget = 20000;
