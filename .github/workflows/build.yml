@@ -31,6 +31,14 @@ jobs:
               -install_name @rpath/$n.dylib \
               -o build/$n.dylib src/$n.m && codesign -f -s - build/$n.dylib && echo "OK $n") 2>&1 | tee -a build/build.log
           done
+          echo "== RaTweak (all-in-one) ==" | tee -a build/build.log
+          (mkdir -p build/obj && for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen; do
+             xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -fobjc-arc -Os -Wall -Wno-deprecated-declarations -DRA_NO_IMPL -c src/$n.m -o build/obj/$n.o || exit 1
+           done
+           xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -fobjc-arc -Os -Wno-deprecated-declarations -c src/ra_impl.m -o build/obj/ra_impl.o || exit 1
+           xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj/*.o \
+             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication \
+             -install_name @rpath/RaTweak.dylib -o build/RaTweak.dylib && codesign -f -s - build/RaTweak.dylib && echo "OK RaTweak") 2>&1 | tee -a build/build.log
           ls -la build | tee -a build/build.log
 
       - uses: actions/upload-artifact@v4

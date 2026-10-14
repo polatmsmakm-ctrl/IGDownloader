@@ -36,6 +36,7 @@ static UIViewController *raTop(void) {
 
 @interface RaMenuVC : UITableViewController
 @end
+#ifndef RA_NO_IMPL
 @implementation RaMenuVC
 - (instancetype)init { return [super initWithStyle:UITableViewStyleInsetGrouped]; }
 - (void)viewDidLoad {
@@ -83,6 +84,7 @@ static UIViewController *raTop(void) {
     return c;
 }
 @end
+#endif
 
 static void raOpenMenu(void) RA_UNUSED;
 static void raOpenMenu(void) {
@@ -96,9 +98,11 @@ static void raOpenMenu(void) {
 @interface RaOpener : NSObject
 + (void)open:(id)sender;
 @end
+#ifndef RA_NO_IMPL
 @implementation RaOpener
 + (void)open:(id)sender { raOpenMenu(); }
 @end
+#endif
 
 static void raInstallEntryPoints(void) {
     NSProcessInfo *p = NSProcessInfo.processInfo;

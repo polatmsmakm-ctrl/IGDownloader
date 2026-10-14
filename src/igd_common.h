@@ -88,7 +88,7 @@ static void igdRun(NSString *name, NSString *build, void (^install)(void)) {
             for (NSString *s in igdStatus()) { if ([s hasPrefix:@"✗"]) bad++; else good++; }
             NSLog(@"[%@ %@]\n%@", name, build, [igdStatus() componentsJoinedByString:@"\n"]);
             NSString *key = [NSString stringWithFormat:@"igd.shown.%@.%@", name, build];
-            if (bad || ![NSUserDefaults.standardUserDefaults boolForKey:key]) {
+            if (bad) {
                 [NSUserDefaults.standardUserDefaults setBool:YES forKey:key];
                 igdToast([NSString stringWithFormat:@"%@ %@: %lu/%lu hooks%@", name, build, (unsigned long)good, (unsigned long)(good + bad),
                           bad ? @" (long NSLog has details)" : @""]);
