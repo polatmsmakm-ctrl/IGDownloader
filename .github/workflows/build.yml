@@ -15,9 +15,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build dylib (arm64, iOS 14+)
+        continue-on-error: true
         run: |
+          set -o pipefail
           mkdir -p build
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          (          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
           xcrun --sdk iphoneos clang \
             -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" \
             -fobjc-arc -dynamiclib -Os -Wall -Wno-deprecated-declarations \
@@ -27,19 +29,22 @@ jobs:
             -o build/IGDownloader.dylib src/IGDownloader.m
           codesign -f -s - build/IGDownloader.dylib
           file build/IGDownloader.dylib
-          ls -la build
+          ls -la build) 2>&1 | tee build/build.log
 
       - uses: actions/upload-artifact@v4
         with:
           name: IGDownloader-dylib
           path: build/IGDownloader.dylib
+          if-no-files-found: ignore
 
-      - name: Commit built dylib to dist/
+      - name: Commit built dylib + log to dist/
+        if: always()
         run: |
           mkdir -p dist
-          cp build/IGDownloader.dylib dist/IGDownloader.dylib
+          cp build/build.log dist/build.log || true
+          cp build/IGDownloader.dylib dist/IGDownloader.dylib || true
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add dist/IGDownloader.dylib
+          git add dist
           git diff --cached --quiet || git commit -m "build: IGDownloader.dylib [skip ci]"
           git push
