@@ -1,9 +1,9 @@
 == IGDownloader ==
-src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
-  461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
+src/IGDownloader.m:475:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
+  475 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
       |                        ^
-src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
-  468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
+src/IGDownloader.m:482:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
+  482 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
 2 warnings generated.
 OK IGDownloader
@@ -28,11 +28,11 @@ OK IGHQ
 == IGTools ==
 OK IGTools
 == RaTweak (all-in-one) ==
-src/IGDownloader.m:461:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
-  461 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
+src/IGDownloader.m:475:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
+  475 |     for (const char *n : (const char *[]){"text", "commentText", "captionText", "truncatedText"}) {
       |                        ^
-src/IGDownloader.m:468:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
-  468 |     for (const char *n : (const char *[]){"text", "commentText"}) {
+src/IGDownloader.m:482:24: warning: range-based for loop is a C++11 extension [-Wc++11-extensions]
+  482 |     for (const char *n : (const char *[]){"text", "commentText"}) {
       |                        ^
 2 warnings generated.
 src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
@@ -41,20 +41,20 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
 1 warning generated.
 OK RaTweak
 OK RaTweakLite (no chat tools)
-total 7176
-drwxr-xr-x  16 runner  staff     512 Oct 14 21:34 .
-drwxr-xr-x   9 runner  staff     288 Oct 14 21:34 ..
--rw-r--r--   1 runner  staff    1646 Oct 14 21:34 build.log
--rwxr-xr-x   1 runner  staff  287008 Oct 14 21:34 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  354544 Oct 14 21:34 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  286480 Oct 14 21:34 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  287376 Oct 14 21:34 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  285904 Oct 14 21:34 IGHQ.dylib
--rwxr-xr-x   1 runner  staff  286688 Oct 14 21:34 IGLock.dylib
--rwxr-xr-x   1 runner  staff  286144 Oct 14 21:34 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  288256 Oct 14 21:34 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  335952 Oct 14 21:34 IGTools.dylib
-drwxr-xr-x  12 runner  staff     384 Oct 14 21:34 obj
-drwxr-xr-x  11 runner  staff     352 Oct 14 21:34 obj_lite
--rwxr-xr-x   1 runner  staff  515584 Oct 14 21:34 RaTweak.dylib
--rwxr-xr-x   1 runner  staff  435808 Oct 14 21:34 RaTweakLite.dylib
+total 7208
+drwxr-xr-x  16 runner  staff     512 Oct 14 21:53 .
+drwxr-xr-x   9 runner  staff     288 Oct 14 21:53 ..
+-rw-r--r--   1 runner  staff    1646 Oct 14 21:53 build.log
+-rwxr-xr-x   1 runner  staff  287008 Oct 14 21:53 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  354896 Oct 14 21:53 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  286480 Oct 14 21:53 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287376 Oct 14 21:53 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  285904 Oct 14 21:53 IGHQ.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 14 21:53 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286144 Oct 14 21:53 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288256 Oct 14 21:53 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335952 Oct 14 21:53 IGTools.dylib
+drwxr-xr-x  12 runner  staff     384 Oct 14 21:53 obj
+drwxr-xr-x  11 runner  staff     352 Oct 14 21:53 obj_lite
+-rwxr-xr-x   1 runner  staff  515904 Oct 14 21:53 RaTweak.dylib
+-rwxr-xr-x   1 runner  staff  452624 Oct 14 21:53 RaTweakLite.dylib
