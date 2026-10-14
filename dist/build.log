@@ -72,12 +72,12 @@ src/ra_menu.h:90:90: note: place parentheses around the '&&' expression to silen
 1 warning generated.
 OK IGSeen
 total 1368
-drwxr-xr-x  9 runner  staff     288 Oct 14 18:53 .
-drwxr-xr-x  9 runner  staff     288 Oct 14 18:53 ..
--rw-r--r--  1 runner  staff    7800 Oct 14 18:53 build.log
--rwxr-xr-x  1 runner  staff  114256 Oct 14 18:53 IGConfirm.dylib
--rwxr-xr-x  1 runner  staff  141008 Oct 14 18:53 IGDownloader.dylib
--rwxr-xr-x  1 runner  staff  115440 Oct 14 18:53 IGGhost.dylib
--rwxr-xr-x  1 runner  staff   97456 Oct 14 18:53 IGLock.dylib
--rwxr-xr-x  1 runner  staff   96880 Oct 14 18:53 IGNoAds.dylib
--rwxr-xr-x  1 runner  staff  115888 Oct 14 18:53 IGSeen.dylib
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:57 .
+drwxr-xr-x  9 runner  staff     288 Oct 14 18:57 ..
+-rw-r--r--  1 runner  staff    7800 Oct 14 18:57 build.log
+-rwxr-xr-x  1 runner  staff  114256 Oct 14 18:57 IGConfirm.dylib
+-rwxr-xr-x  1 runner  staff  141200 Oct 14 18:57 IGDownloader.dylib
+-rwxr-xr-x  1 runner  staff  115440 Oct 14 18:57 IGGhost.dylib
+-rwxr-xr-x  1 runner  staff   97456 Oct 14 18:57 IGLock.dylib
+-rwxr-xr-x  1 runner  staff   96880 Oct 14 18:57 IGNoAds.dylib
+-rwxr-xr-x  1 runner  staff  115888 Oct 14 18:57 IGSeen.dylib
