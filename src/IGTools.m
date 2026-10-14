@@ -4,7 +4,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 #import <PhotosUI/PhotosUI.h>
-#define BUILD @"t3"
+#define BUILD @"t4"
 
 static BOOL gRunning, gStop;
 
@@ -284,49 +284,68 @@ static void swapRecordedFile(void) {
 
 
 // ---- fallback: watch for the recording file instead of relying on stop() ---------------------
-static NSTimer *gPoll;
-static NSMutableDictionary<NSString *, NSDate *> *gSeenM;   // path -> last mtime we saw
-static NSMutableSet<NSString *> *gLogged, *gSwappedKeys;
+// Runs on a background queue and only looks inside directories that changed in the last few seconds,
+// so it stays cheap even though Instagram's cache folders are huge.
+static dispatch_source_t gPoll;
+static NSMutableDictionary<NSString *, NSDate *> *gTracked;   // ogg-looking files we are watching: path -> last mtime
+static NSMutableSet<NSString *> *gLogged, *gDone;
+static int gLogBudget;
 
-static void pollScan(NSString *dir, NSData *repl, int depth, int *logs) {
-    for (NSString *it in [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil]) {
-        NSString *p = [dir stringByAppendingPathComponent:it];
-        BOOL isDir = NO;
-        if (![NSFileManager.defaultManager fileExistsAtPath:p isDirectory:&isDir]) continue;
-        if (isDir) { if (depth < 3) pollScan(p, repl, depth + 1, logs); continue; }
-        if ([p isEqualToString:gPendingOgg]) continue;
-        NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
-        NSDate *mt = at.fileModificationDate;
-        if (!mt || -[mt timeIntervalSinceNow] > 4 || at.fileSize == 0) continue;
-        BOOL ogg = looksOgg(p) || [@[@"ogg", @"opus", @"oga"] containsObject:p.pathExtension.lowercaseString];
-        if (![gLogged containsObject:p] && *logs < 3) {
-            [gLogged addObject:p]; (*logs)++;
-            vlog(@"new file: %@ (%llu bytes, ogg=%d)", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"], at.fileSize, ogg);
-        }
-        if (!ogg) continue;
-        NSDate *prev = gSeenM[p]; gSeenM[p] = mt;
-        NSString *key = [NSString stringWithFormat:@"%@|%f", p, mt.timeIntervalSince1970];
-        if (prev && [prev isEqualToDate:mt] && ![gSwappedKeys containsObject:key]) {   // unchanged for a tick = recording finished
-            BOOL ok = [repl writeToFile:p atomically:NO];
-            [gSwappedKeys addObject:key];
-            vlog(@"poll: swapped %@ (%llu bytes) ok=%d", p.lastPathComponent, at.fileSize, ok);
-            NSDictionary *at2 = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
-            if (at2.fileModificationDate) [gSwappedKeys addObject:[NSString stringWithFormat:@"%@|%f", p, at2.fileModificationDate.timeIntervalSince1970]];
-        }
+static void pollTrySwap(NSString *p, NSData *repl) {
+    NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+    NSDate *mt = at.fileModificationDate;
+    if (!mt || at.fileSize == 0) return;
+    NSString *key = [NSString stringWithFormat:@"%@|%.3f", p, mt.timeIntervalSince1970];
+    if ([gDone containsObject:key]) return;
+    NSDate *prev = gTracked[p];
+    gTracked[p] = mt;
+    if (prev && [prev isEqualToDate:mt]) {            // unchanged for one tick: recording finished
+        BOOL ok = [repl writeToFile:p atomically:NO];
+        [gDone addObject:key];
+        NSDictionary *at2 = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+        if (at2.fileModificationDate) [gDone addObject:[NSString stringWithFormat:@"%@|%.3f", p, at2.fileModificationDate.timeIntervalSince1970]];
+        vlog(@"poll: swapped %@ (%llu bytes before) ok=%d", p.lastPathComponent, at.fileSize, ok);
     }
 }
+
+static void pollScan(NSString *dir, int depth, NSData *repl) {
+    NSArray *items = [NSFileManager.defaultManager contentsOfDirectoryAtPath:dir error:nil];
+    if (items.count > 600) return;                    // huge cache folder: not where a voice note lives
+    for (NSString *it in items) {
+        NSString *p = [dir stringByAppendingPathComponent:it];
+        NSDictionary *at = [NSFileManager.defaultManager attributesOfItemAtPath:p error:nil];
+        NSDate *mt = at.fileModificationDate;
+        if (!mt || -[mt timeIntervalSinceNow] > 6) continue;
+        if ([at.fileType isEqualToString:NSFileTypeDirectory]) { if (depth < 3) pollScan(p, depth + 1, repl); continue; }
+        if (at.fileSize == 0 || [p isEqualToString:gPendingOgg]) continue;
+        BOOL ogg = [@[@"ogg", @"opus", @"oga"] containsObject:p.pathExtension.lowercaseString] || looksOgg(p);
+        if (![gLogged containsObject:p] && gLogBudget > 0) {
+            [gLogged addObject:p]; gLogBudget--;
+            vlog(@"new file: %@ (%llu bytes, ogg=%d)", [p stringByReplacingOccurrencesOfString:NSHomeDirectory() withString:@"~"], at.fileSize, ogg);
+        }
+        if (ogg && !gTracked[p]) gTracked[p] = mt;
+    }
+}
+
 static void startPolling(void) {
-    [gPoll invalidate];
-    gSeenM = [NSMutableDictionary new]; gLogged = [NSMutableSet new]; gSwappedKeys = [NSMutableSet new];
-    gPoll = [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *t) {
-        if (!gPendingOgg || -[gPendingAt timeIntervalSinceNow] > 600) { [t invalidate]; gPoll = nil; return; }
-        NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
-        if (!repl.length) return;
-        NSString *home = NSHomeDirectory();
-        int logs = 0;
-        for (NSString *r in @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"], [home stringByAppendingPathComponent:@"Documents"], [home stringByAppendingPathComponent:@"Library/Application Support"]])
-            pollScan(r, repl, 0, &logs);
-    }];
+    if (gPoll) dispatch_source_cancel(gPoll);
+    gTracked = [NSMutableDictionary new]; gLogged = [NSMutableSet new]; gDone = [NSMutableSet new]; gLogBudget = 12;
+    NSData *repl = [NSData dataWithContentsOfFile:gPendingOgg];
+    NSString *home = NSHomeDirectory();
+    NSArray *roots = @[NSTemporaryDirectory(), [home stringByAppendingPathComponent:@"Library/Caches"],
+                       [home stringByAppendingPathComponent:@"Documents"], [home stringByAppendingPathComponent:@"Library/Application Support"]];
+    dispatch_queue_t q = dispatch_queue_create("ra.voice.poll", DISPATCH_QUEUE_SERIAL);
+    dispatch_source_t t = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, q);
+    dispatch_source_set_timer(t, dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), 500 * NSEC_PER_MSEC, 100 * NSEC_PER_MSEC);
+    dispatch_source_set_event_handler(t, ^{
+        if (!gPendingOgg || -[gPendingAt timeIntervalSinceNow] > 600 || !repl.length) { dispatch_source_cancel(t); return; }
+        @autoreleasepool {
+            for (NSString *p in [gTracked.allKeys copy]) pollTrySwap(p, repl);   // watch the files we already know about
+            for (NSString *r in roots) pollScan(r, 0, repl);                      // and look for new ones
+        }
+    });
+    gPoll = t;
+    dispatch_resume(t);
 }
 
 static void hookRecorder(void) {
