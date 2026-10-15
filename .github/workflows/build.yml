@@ -20,32 +20,32 @@ jobs:
           mkdir -p build
           SDK=$(xcrun --sdk iphoneos --show-sdk-path)
           : > build/build.log
-          for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen IGExtras IGHQ IGDiag IGTools; do
+          for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen IGExtras IGHQ IGDiag IGFix IGTools; do
             echo "== $n ==" | tee -a build/build.log
             (xcrun --sdk iphoneos clang \
               -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" \
               -fobjc-arc -dynamiclib -Os -Wall -Wno-deprecated-declarations \
               -framework UIKit -framework Foundation -framework AVFoundation \
               -framework Photos -framework CoreGraphics -framework QuartzCore \
-              -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
+              -framework LocalAuthentication -framework Security -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
               -install_name @rpath/$n.dylib \
               -o build/$n.dylib src/$n.m && codesign -f -s - build/$n.dylib && echo "OK $n") 2>&1 | tee -a build/build.log
           done
           echo "== RaTweak (all-in-one) ==" | tee -a build/build.log
-          (mkdir -p build/obj && for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen IGExtras IGHQ IGDiag IGTools; do
+          (mkdir -p build/obj && for n in IGDownloader IGConfirm IGGhost IGNoAds IGLock IGSeen IGExtras IGHQ IGDiag IGFix IGTools; do
              xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -fobjc-arc -Os -Wall -Wno-deprecated-declarations -DRA_NO_IMPL -c src/$n.m -o build/obj/$n.o || exit 1
            done
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -fobjc-arc -Os -Wno-deprecated-declarations -c src/ra_impl.m -o build/obj/ra_impl.o || exit 1
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj/*.o \
-             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
+             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework Security -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
              -install_name @rpath/RaTweak.dylib -o build/RaTweak.dylib && codesign -f -s - build/RaTweak.dylib && echo "OK RaTweak"
            mkdir -p build/obj_lite && cp build/obj/*.o build/obj_lite/ && rm build/obj_lite/IGTools.o
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj_lite/*.o \
-             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
+             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework Security -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
              -install_name @rpath/RaTweakLite.dylib -o build/RaTweakLite.dylib && codesign -f -s - build/RaTweakLite.dylib && echo "OK RaTweakLite (no chat tools)"
            mkdir -p build/obj_safe && cp build/obj/*.o build/obj_safe/ && rm build/obj_safe/IGHQ.o
            xcrun --sdk iphoneos clang -arch arm64 -miphoneos-version-min=14.0 -isysroot "$SDK" -dynamiclib build/obj_safe/*.o \
-             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
+             -framework UIKit -framework Foundation -framework AVFoundation -framework Photos -framework CoreGraphics -framework QuartzCore -framework LocalAuthentication -framework Security -framework PhotosUI -framework AudioToolbox -framework CoreMedia \
              -install_name @rpath/RaTweakSafe.dylib -o build/RaTweakSafe.dylib && codesign -f -s - build/RaTweakSafe.dylib && echo "OK RaTweakSafe (no HQ upload)") 2>&1 | tee -a build/build.log
           ls -la build | tee -a build/build.log
 
