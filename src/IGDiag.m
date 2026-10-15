@@ -7,7 +7,7 @@
 #include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <sys/sysctl.h>
-#define BUILD @"d1"
+#define BUILD @"d2"
 
 static pthread_t gMain;
 static volatile CFAbsoluteTime gPong;
@@ -94,10 +94,14 @@ static NSString *buildReport(void) {
     for (NSString *s in st) if ([s hasPrefix:@"✗"]) { [r appendFormat:@"%@\n", s]; bad++; }
     [r appendFormat:@"ok %lu / failed %lu\n", (unsigned long)(st.count - bad), (unsigned long)bad];
 
-    [r appendString:@"\n-- Ra switches --\n"];
+    [r appendString:@"\n-- Ra switches (all, current state) --\n"];
+    NSMutableArray *rows = [NSMutableArray new];
+    for (NSDictionary *d in raRegistry()) [rows addObject:[NSString stringWithFormat:@"%@=%@", d[@"key"], raOn(d[@"key"]) ? @"on" : @"OFF"]];
+    [rows sortUsingSelector:@selector(compare:)];
+    [r appendFormat:@"%@\n", [rows componentsJoinedByString:@"  "]];
     NSDictionary *all = NSUserDefaults.standardUserDefaults.dictionaryRepresentation;
     for (NSString *k in [all.allKeys sortedArrayUsingSelector:@selector(compare:)])
-        if ([k hasPrefix:@"ra."] || [k containsString:@"UploadHighQuality"]) [r appendFormat:@"%@=%@\n", k, all[k]];
+        if ([k containsString:@"UploadHighQuality"]) [r appendFormat:@"%@=%@\n", k, all[k]];
     return r;
 }
 
