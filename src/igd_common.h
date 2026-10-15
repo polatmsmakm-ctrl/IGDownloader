@@ -85,7 +85,11 @@ static BOOL igdHook(const char *clsName, const char *selName, IGDMaker make) {
 // Install now and once more after 4s (some classes load late); show a one-time summary per build.
 static void igdRun(NSString *name, NSString *build, void (^install)(void)) IGD_UNUSED;
 static void igdRun(NSString *name, NSString *build, void (^install)(void)) {
+    // each module gets a diagnostic switch in Ra Menu; turning it off (then reopening the app) skips its hooks entirely
+    NSString *modKey = [@"mod." stringByAppendingString:name];
+    raRegister(@"وحدات (للتشخيص)", modKey, name, @"أطفئه وأعد فتح التطبيق لتعطيل كل hooks هذي الوحدة");
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (!raOn(modKey)) { [igdStatus() addObject:[NSString stringWithFormat:@"⏸ %@ disabled by switch", name]]; return; }
         install();
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
             NSUInteger bad = 0, good = 0;

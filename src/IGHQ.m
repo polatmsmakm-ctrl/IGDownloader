@@ -21,8 +21,11 @@ static void hookStrategy(void) {
 }
 
 static void forceFlag(void) {
-    if (!raOn(@"hq.send")) return;
     NSUserDefaults *d = NSUserDefaults.standardUserDefaults;
+    if (!raOn(@"hq.send") || !raOn(@"mod.IGHQ")) {      // off: also clean up the flags we may have written earlier
+        for (NSString *k in @[@"_IGUploadHighQuality", @"IGUploadHighQuality"]) if ([d objectForKey:k]) [d removeObjectForKey:k];
+        return;
+    }
     NSMutableArray *keys = [@[@"_IGUploadHighQuality", @"IGUploadHighQuality"] mutableCopy];
     // "IGUploadHighQuality" is an exported string constant in the app: use its real value as the key too
     void **sym = (void **)dlsym(RTLD_DEFAULT, "IGUploadHighQuality");
