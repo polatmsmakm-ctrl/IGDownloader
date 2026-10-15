@@ -44,23 +44,23 @@ src/IGGhost.m:6:13: warning: unused function 'silence' [-Wunused-function]
 OK RaTweak
 OK RaTweakLite (no chat tools)
 OK RaTweakSafe (no HQ upload)
-total 8824
-drwxr-xr-x  19 runner  staff     608 Oct 15 00:25 .
-drwxr-xr-x   9 runner  staff     288 Oct 15 00:24 ..
--rw-r--r--   1 runner  staff    1699 Oct 15 00:25 build.log
--rwxr-xr-x   1 runner  staff  287184 Oct 15 00:25 IGConfirm.dylib
--rwxr-xr-x   1 runner  staff  285360 Oct 15 00:25 IGDiag.dylib
--rwxr-xr-x   1 runner  staff  355088 Oct 15 00:25 IGDownloader.dylib
--rwxr-xr-x   1 runner  staff  286688 Oct 15 00:25 IGExtras.dylib
--rwxr-xr-x   1 runner  staff  287552 Oct 15 00:25 IGGhost.dylib
--rwxr-xr-x   1 runner  staff  286160 Oct 15 00:25 IGHQ.dylib
--rwxr-xr-x   1 runner  staff  286768 Oct 15 00:25 IGLock.dylib
--rwxr-xr-x   1 runner  staff  286336 Oct 15 00:25 IGNoAds.dylib
--rwxr-xr-x   1 runner  staff  288400 Oct 15 00:25 IGSeen.dylib
--rwxr-xr-x   1 runner  staff  335936 Oct 15 00:25 IGTools.dylib
-drwxr-xr-x  13 runner  staff     416 Oct 15 00:25 obj
-drwxr-xr-x  12 runner  staff     384 Oct 15 00:25 obj_lite
-drwxr-xr-x  12 runner  staff     384 Oct 15 00:25 obj_safe
--rwxr-xr-x   1 runner  staff  517072 Oct 15 00:25 RaTweak.dylib
--rwxr-xr-x   1 runner  staff  470880 Oct 15 00:25 RaTweakLite.dylib
--rwxr-xr-x   1 runner  staff  515808 Oct 15 00:25 RaTweakSafe.dylib
+total 8856
+drwxr-xr-x  19 runner  staff     608 Oct 15 00:47 .
+drwxr-xr-x   9 runner  staff     288 Oct 15 00:46 ..
+-rw-r--r--   1 runner  staff    1699 Oct 15 00:47 build.log
+-rwxr-xr-x   1 runner  staff  287184 Oct 15 00:46 IGConfirm.dylib
+-rwxr-xr-x   1 runner  staff  285488 Oct 15 00:47 IGDiag.dylib
+-rwxr-xr-x   1 runner  staff  355088 Oct 15 00:46 IGDownloader.dylib
+-rwxr-xr-x   1 runner  staff  286688 Oct 15 00:46 IGExtras.dylib
+-rwxr-xr-x   1 runner  staff  287552 Oct 15 00:46 IGGhost.dylib
+-rwxr-xr-x   1 runner  staff  286160 Oct 15 00:46 IGHQ.dylib
+-rwxr-xr-x   1 runner  staff  286768 Oct 15 00:46 IGLock.dylib
+-rwxr-xr-x   1 runner  staff  286336 Oct 15 00:46 IGNoAds.dylib
+-rwxr-xr-x   1 runner  staff  288400 Oct 15 00:46 IGSeen.dylib
+-rwxr-xr-x   1 runner  staff  335936 Oct 15 00:47 IGTools.dylib
+drwxr-xr-x  13 runner  staff     416 Oct 15 00:47 obj
+drwxr-xr-x  12 runner  staff     384 Oct 15 00:47 obj_lite
+drwxr-xr-x  12 runner  staff     384 Oct 15 00:47 obj_safe
+-rwxr-xr-x   1 runner  staff  533664 Oct 15 00:47 RaTweak.dylib
+-rwxr-xr-x   1 runner  staff  470960 Oct 15 00:47 RaTweakLite.dylib
+-rwxr-xr-x   1 runner  staff  515872 Oct 15 00:47 RaTweakSafe.dylib
