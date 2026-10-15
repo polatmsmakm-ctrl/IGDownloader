@@ -8,10 +8,14 @@
 
 static NSMutableArray<NSString *> *igdStatus(void) IGD_UNUSED;
 static NSMutableArray<NSString *> *igdStatus(void) {
-    static NSMutableArray *a;
-    static dispatch_once_t o;
-    dispatch_once(&o, ^{ a = [NSMutableArray new]; });
-    return a;
+    // shared by every module in the process (one list on NSProcessInfo), so the diagnostic report sees all hooks
+    NSProcessInfo *p = NSProcessInfo.processInfo;
+    const void *k = (const void *)sel_registerName("ra.status");
+    @synchronized (p) {
+        NSMutableArray *a = objc_getAssociatedObject(p, k);
+        if (!a) { a = [NSMutableArray new]; objc_setAssociatedObject(p, k, a, OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
+        return a;
+    }
 }
 
 static UIWindow *igdKeyWindow(void) IGD_UNUSED;

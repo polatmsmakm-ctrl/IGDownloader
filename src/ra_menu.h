@@ -114,7 +114,7 @@ static NSString *raIcon(NSString *k) {
     _table.tableHeaderView = h;
 
     // footer: credit
-    UIView *f = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 110)];
+    UIView *f = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 160)];
     UIView *line = [[UIView alloc] initWithFrame:CGRectMake(0, 22, 60, 1)];
     line.backgroundColor = [UIColor colorWithWhite:1 alpha:0.25];
     line.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
@@ -127,6 +127,15 @@ static NSString *raIcon(NSString *k) {
     c.frame = CGRectMake(0, 36, 100, 24);
     c.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     [f addSubview:c];
+    UIButton *dg = [UIButton buttonWithType:UIButtonTypeCustom];
+    dg.bounds = CGRectMake(0, 0, 170, 34);
+    dg.center = CGPointMake(50, 92);
+    dg.layer.cornerRadius = 17;
+    dg.backgroundColor = [UIColor colorWithWhite:1 alpha:0.14];
+    [dg setTitle:@"تقرير التشخيص" forState:UIControlStateNormal];
+    dg.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    [dg addTarget:self action:@selector(diag) forControlEvents:UIControlEventTouchUpInside];
+    [f addSubview:dg];
     _table.tableFooterView = f;
 
     // close button
@@ -154,6 +163,10 @@ static NSString *raIcon(NSString *k) {
     ((CALayer *)self.view.subviews[1].layer.sublayers.firstObject).frame = self.view.bounds;
 }
 - (void)done { [self dismissViewControllerAnimated:YES completion:nil]; }
+- (void)diag {
+    // IGDiag listens; it presents the report on top of this menu
+    [NSNotificationCenter.defaultCenter postNotificationName:@"ra.diag" object:self];
+}
 - (NSArray *)groups {
     NSMutableArray *names = [NSMutableArray new];
     for (NSDictionary *d in raRegistry()) if (![names containsObject:d[@"group"]]) [names addObject:d[@"group"]];
